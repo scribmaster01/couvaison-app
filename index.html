@@ -653,7 +653,7 @@ window.saveStep1=async()=>{
 /* ── RENDER LOTS ─────────────────────────────────────────────────────── */
 function renderLots(){
   const el=$('lots-list');
-  const myUid=me?String(me.uid):""; const src=admin?lots:lots.filter(l=>String(l.createdBy)===myUid);
+  const myUid=me?String(me.uid):""; const src=lots;
   if(!src.length){
     el.innerHTML=`<div class="empty"><div class="empty-i">🥚</div><p>Aucun lot enregistré.<br>Commencez par la saisie !</p></div>`;
     return;
@@ -805,7 +805,7 @@ window.rLot=async k=>{
 function pc(n,d){return d?Math.round(n/d*1000)/10:0;}
 function renderDash(){
   const el=$('dash');
-  const myUid=me?String(me.uid):""; const src=admin?lots:lots.filter(l=>String(l.createdBy)===myUid);
+  const myUid=me?String(me.uid):""; const src=lots;
   if(!src.length){el.innerHTML=`<div class="empty"><div class="empty-i">📊</div><p>Aucune donnée disponible.</p></div>`;return;}
   const T=k=>src.reduce((s,l)=>s+(parseFloat(l[k])||0),0);
   const qte=T('qte'),bons=T('bons'),f1=T('m1Fecondes'),f2=T('m2Fecondes'),
