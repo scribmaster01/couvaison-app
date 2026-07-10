@@ -641,10 +641,13 @@ window.saveStep1=async()=>{
     malades:'',mortnes:'',resultat:''
   };
   try{
-    await push(ref(db,'lots'),lot);
+    const result = await push(ref(db,'lots'),lot);
+    console.log('Succès:', result.key);
     buildForm();
     toast('✅ Lot enregistré ! Complétez dans Mes Lots.');
-  }catch(e){toast('❌ '+e.message);}
+  }catch(e){
+    console.error('Erreur Firebase:', e);
+    alert('Erreur: ' + e.message + ' | Code: ' + e.code);}
 };
 
 /* ── RENDER LOTS ─────────────────────────────────────────────────────── */
