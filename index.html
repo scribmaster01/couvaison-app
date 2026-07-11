@@ -1,0 +1,1097 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0f2318">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="CouVaison">
+<title>CouVaison – Poule Goliath</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --soil:#0f2318;--forest:#1c4230;--moss:#2d6a4f;--leaf:#52b788;--sprout:#95d5b2;
+  --dew:#d8f3dc;--shell:#f5f0e8;--cream:#faf7f2;--yolk:#e9a825;--yolk-lt:#fef3d0;
+  --crack:#c0392b;--crack-lt:#fdecea;--ink:#1a2820;--ash:#6b8270;--mist:#dce8e0;
+  --white:#fff;--r:12px;--r-sm:7px;
+  --sh:0 1px 3px rgba(15,35,24,.08),0 4px 16px rgba(15,35,24,.06);
+  --sh-lg:0 8px 32px rgba(15,35,24,.18);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{-webkit-text-size-adjust:100%;}
+body{font-family:'Inter',sans-serif;background:var(--cream);color:var(--ink);min-height:100vh;padding-bottom:74px;-webkit-font-smoothing:antialiased;}
+
+/* AUTH */
+#auth-screen{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px 20px;background:var(--soil);background-image:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(45,106,79,.4) 0%,transparent 70%);}
+.auth-egg{font-size:52px;margin-bottom:6px;animation:float 3s ease-in-out infinite;}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+.auth-brand{font-family:'Playfair Display',serif;font-size:30px;font-weight:700;color:#fff;margin-bottom:2px;}
+.auth-tagline{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--leaf);margin-bottom:28px;font-weight:500;}
+.auth-card{width:100%;max-width:380px;background:var(--white);border-radius:18px;padding:24px;box-shadow:var(--sh-lg);}
+.auth-segs{display:flex;background:var(--shell);border-radius:var(--r-sm);padding:3px;gap:3px;margin-bottom:20px;}
+.auth-seg{flex:1;padding:9px;border:none;border-radius:5px;background:none;font-family:'Inter',sans-serif;font-size:13px;font-weight:500;color:var(--ash);cursor:pointer;transition:all .18s;}
+.auth-seg.on{background:var(--white);color:var(--soil);font-weight:600;box-shadow:0 1px 4px rgba(15,35,24,.12);}
+.auth-err{background:var(--crack-lt);color:var(--crack);border:1px solid #f5c6c2;border-radius:var(--r-sm);padding:10px 13px;font-size:13px;margin-bottom:14px;display:none;}
+.af{margin-bottom:12px;}
+.af label{display:block;font-size:11px;font-weight:600;color:var(--ash);letter-spacing:.06em;text-transform:uppercase;margin-bottom:5px;}
+.af input{width:100%;padding:11px 13px;border:1.5px solid var(--mist);border-radius:var(--r-sm);font-family:'Inter',sans-serif;font-size:14px;color:var(--ink);background:var(--cream);-webkit-appearance:none;transition:border-color .15s;}
+.af input:focus{outline:none;border-color:var(--leaf);background:var(--white);}
+.auth-submit{width:100%;padding:13px;background:var(--soil);color:var(--white);border:none;border-radius:var(--r-sm);font-family:'Inter',sans-serif;font-size:15px;font-weight:600;cursor:pointer;margin-top:4px;}
+.auth-submit:active{background:var(--forest);}
+
+/* HEADER */
+#app-screen{display:none;}
+header{background:var(--soil);padding:11px 14px;position:sticky;top:0;z-index:100;display:flex;align-items:center;gap:8px;box-shadow:0 2px 12px rgba(15,35,24,.3);}
+.h-logo{font-size:20px;}
+.h-title{font-family:'Playfair Display',serif;font-size:16px;font-weight:700;color:#fff;flex:1;line-height:1;}
+.h-title small{display:block;font-family:'Inter',sans-serif;font-size:9px;color:var(--sprout);font-weight:400;letter-spacing:.04em;}
+.h-farm{font-size:10px;color:var(--yolk);font-weight:600;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.admin-pill{display:inline-block;background:var(--yolk);color:var(--soil);font-size:8px;font-weight:700;padding:2px 5px;border-radius:8px;margin-left:3px;vertical-align:middle;}
+#conn-dot{font-size:10px;}
+.logout-btn{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.7);padding:5px 9px;border-radius:20px;font-size:11px;font-weight:500;cursor:pointer;font-family:'Inter',sans-serif;}
+
+/* PANELS */
+.panel{display:none;padding:14px;animation:fadeUp .22s ease;}
+.panel.on{display:block;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* LAYOUT */
+.sec-head{display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
+.sec-head h2{font-family:'Playfair Display',serif;font-size:17px;font-weight:700;color:var(--soil);}
+.sec-line{flex:1;height:1px;background:var(--mist);}
+.sec-btn{background:var(--dew);border:1px solid var(--sprout);color:var(--forest);padding:5px 11px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;white-space:nowrap;}
+
+/* CARDS */
+.card{background:var(--white);border-radius:var(--r);border:1px solid var(--mist);padding:14px;box-shadow:var(--sh);margin-bottom:10px;}
+.card.locked{background:#f7f7f5;border-color:#e8e8e4;}
+.card.locked input{background:#f0efed!important;color:#aaa!important;border-color:#e0dedd!important;}
+.card-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--ash);margin-bottom:11px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.card-label .bullet{width:5px;height:5px;border-radius:50%;background:var(--leaf);flex-shrink:0;}
+.lock-tag{margin-left:auto;font-size:10px;color:#bbb;}
+.stage-pill{font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;letter-spacing:.04em;}
+.pill-active{background:var(--yolk-lt);color:#7a5000;}
+.pill-done{background:var(--dew);color:var(--moss);}
+.pill-wait{background:#eee;color:#aaa;}
+
+/* FIELDS */
+.fg{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;}
+.fg.solo{grid-template-columns:1fr;}
+.fg.trio{grid-template-columns:1fr 1fr 1fr;}
+.f label{display:block;font-size:11px;font-weight:500;color:var(--ash);margin-bottom:4px;}
+.f input,.f select,.f textarea{width:100%;padding:9px 11px;border:1.5px solid var(--mist);border-radius:var(--r-sm);font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--ink);background:var(--shell);-webkit-appearance:none;transition:border-color .15s;}
+.f input:focus,.f select:focus,.f textarea:focus{outline:none;border-color:var(--leaf);background:var(--white);}
+.f input[readonly]{background:var(--dew);color:var(--forest);font-weight:600;}
+.f input.auto{background:var(--yolk-lt);color:#7a5000;border-color:#f0d080;font-weight:600;}
+.auto-tag{font-size:9px;background:var(--dew);color:var(--moss);padding:2px 5px;border-radius:8px;font-weight:700;margin-left:3px;}
+.arrow{text-align:center;color:var(--leaf);font-size:15px;margin:1px 0;}
+
+/* BUTTONS */
+.btn{width:100%;padding:12px;border-radius:var(--r);border:none;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all .14s;margin-bottom:6px;letter-spacing:.01em;}
+.btn:last-child{margin-bottom:0;}
+.btn-p{background:var(--soil);color:#fff;}
+.btn-p:active{background:var(--forest);transform:scale(.985);}
+.btn-d{background:var(--crack-lt);color:var(--crack);border:1px solid #f5c6c2;}
+.btn-w{background:var(--yolk-lt);color:#7a5000;border:1px solid #f0d080;}
+.btn-g{background:var(--dew);color:var(--forest);border:1px solid var(--sprout);}
+.btn-sm{padding:6px 12px;font-size:11px;width:auto;border-radius:20px;margin-bottom:0;}
+
+/* LOT CARDS */
+.lot-card{background:var(--white);border-radius:var(--r);border:1px solid var(--mist);margin-bottom:10px;box-shadow:var(--sh);overflow:hidden;}
+.lot-hd{display:flex;align-items:center;background:linear-gradient(135deg,var(--soil) 0%,var(--forest) 60%,var(--moss) 100%);padding:11px 13px;gap:9px;cursor:pointer;color:#fff;}
+.lot-num{width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:14px;flex-shrink:0;}
+.lot-info{flex:1;}
+.lot-info .lot-d{font-size:10px;color:var(--sprout);}
+.lot-info .lot-s{font-size:12px;font-weight:500;margin-top:1px;}
+.lot-res{background:var(--yolk);color:var(--soil);padding:3px 9px;border-radius:14px;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;}
+.lot-bd{padding:12px 13px;display:none;}
+.lot-bd.on{display:block;}
+.prog{display:flex;gap:3px;margin-bottom:9px;}
+.prog-s{flex:1;height:3px;border-radius:2px;background:var(--mist);}
+.prog-s.done{background:var(--leaf);}
+.prog-s.cur{background:var(--yolk);}
+.chips{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:9px;}
+.chip{background:var(--shell);border:1px solid var(--mist);border-radius:var(--r-sm);padding:6px 8px;}
+.chip .cl{font-size:9px;color:var(--ash);font-weight:500;margin-bottom:1px;}
+.chip .cv{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;}
+.chip.hl{background:var(--dew);border-color:var(--sprout);}
+.chip.hl .cv{color:var(--forest);}
+.lot-author{font-size:10px;color:var(--ash);margin-bottom:7px;}
+.lot-admin-row{display:flex;gap:6px;margin-top:9px;flex-wrap:wrap;}
+
+/* DASHBOARD & STATS */
+.kpis{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:11px;}
+.kpi{background:var(--white);border:1px solid var(--mist);border-radius:var(--r);padding:12px;text-align:center;box-shadow:var(--sh);}
+.kpi.full{grid-column:span 2;}
+.kpi.g{background:var(--dew);border-color:var(--sprout);}
+.kpi.y{background:var(--yolk-lt);border-color:#f0d080;}
+.kv{font-family:'Playfair Display',serif;font-size:26px;font-weight:700;color:var(--soil);line-height:1;}
+.kpi.full .kv{font-size:36px;}
+.kl{font-size:9px;color:var(--ash);margin-top:3px;text-transform:uppercase;letter-spacing:.06em;font-weight:500;}
+.kp{font-size:10px;color:var(--moss);font-weight:600;margin-top:2px;}
+.rate-rows .rr{display:flex;align-items:center;padding:8px 13px;border-bottom:1px solid var(--mist);gap:9px;}
+.rate-rows .rr:last-child{border-bottom:none;}
+.rl{flex:1;font-size:11px;}
+.bar-w{width:60px;height:4px;background:var(--mist);border-radius:2px;overflow:hidden;}
+.bar-f{height:100%;border-radius:2px;transition:width .5s ease;}
+.rv{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;color:var(--soil);min-width:36px;text-align:right;}
+
+/* TABS internes */
+.itabs{display:flex;background:var(--shell);border-radius:var(--r-sm);padding:3px;gap:3px;margin-bottom:14px;overflow-x:auto;}
+.itab{flex:1;padding:8px 6px;border:none;border-radius:5px;background:none;font-family:'Inter',sans-serif;font-size:11px;font-weight:500;color:var(--ash);cursor:pointer;white-space:nowrap;transition:all .18s;}
+.itab.on{background:var(--white);color:var(--soil);font-weight:600;box-shadow:0 1px 4px rgba(15,35,24,.12);}
+
+/* FINANCES */
+.fin-row{display:flex;align-items:center;padding:8px 12px;border-bottom:1px solid var(--mist);gap:8px;}
+.fin-row:last-child{border-bottom:none;}
+.fin-label{flex:1;font-size:12px;}
+.fin-val{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;}
+.fin-val.pos{color:var(--moss);}
+.fin-val.neg{color:var(--crack);}
+.fin-val.neu{color:var(--soil);}
+
+/* MULTI-FERME */
+.farm-card{background:var(--white);border:1px solid var(--mist);border-radius:var(--r);padding:13px;margin-bottom:9px;box-shadow:var(--sh);}
+.farm-name{font-family:'Playfair Display',serif;font-size:15px;font-weight:700;color:var(--soil);margin-bottom:3px;}
+.farm-addr{font-size:11px;color:var(--ash);margin-bottom:8px;}
+.farm-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}
+.fstat{background:var(--shell);border-radius:var(--r-sm);padding:7px;text-align:center;}
+.fstat .fv{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;color:var(--soil);}
+.fstat .fl{font-size:9px;color:var(--ash);text-transform:uppercase;letter-spacing:.05em;}
+
+/* POST-ECLOSION */
+.post-row{background:var(--white);border:1px solid var(--mist);border-radius:var(--r);padding:12px;margin-bottom:9px;box-shadow:var(--sh);}
+.post-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+.post-lot-name{font-size:13px;font-weight:600;color:var(--soil);}
+.post-date{font-size:10px;color:var(--ash);}
+
+/* OBSERVATIONS */
+.obs-ta{width:100%;min-height:120px;padding:11px;border:1.5px solid var(--mist);border-radius:var(--r-sm);font-family:'Inter',sans-serif;font-size:13px;color:var(--ink);background:var(--shell);resize:vertical;line-height:1.55;}
+.obs-ta:focus{outline:none;border-color:var(--leaf);background:var(--white);}
+.obs-view{background:var(--yolk-lt);border:1px solid #f0d080;border-radius:var(--r-sm);padding:13px;font-size:13px;line-height:1.6;white-space:pre-wrap;min-height:50px;}
+.obs-meta{font-size:10px;color:var(--ash);margin-top:6px;}
+
+/* AIDE */
+.aide-h3{font-family:'Playfair Display',serif;font-size:15px;color:var(--soil);margin-bottom:11px;padding-bottom:6px;border-bottom:2px solid var(--dew);}
+.step-row{display:flex;gap:9px;margin-bottom:9px;align-items:flex-start;}
+.step-n{width:24px;height:24px;border-radius:50%;background:var(--soil);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;margin-top:1px;}
+.step-n.warn{background:#e67e22;}
+.step-c strong{display:block;font-size:12px;margin-bottom:2px;}
+.step-c p{font-size:11px;color:var(--ash);line-height:1.5;}
+.param-r{display:flex;justify-content:space-between;align-items:center;padding:8px 11px;border-bottom:1px solid var(--mist);}
+.param-r:last-child{border-bottom:none;}
+.pl{font-size:12px;}
+.pv{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:var(--forest);}
+.check-bar-wrap{height:5px;background:var(--mist);border-radius:3px;overflow:hidden;margin-bottom:6px;}
+.check-bar-fill{height:100%;background:var(--leaf);border-radius:3px;transition:width .4s;}
+.check-pct-lbl{font-size:10px;color:var(--moss);font-weight:600;margin-bottom:11px;}
+.ci{display:flex;align-items:flex-start;gap:9px;padding:8px 0;border-bottom:1px solid var(--mist);}
+.ci:last-child{border-bottom:none;}
+.ci input[type=checkbox]{width:17px;height:17px;accent-color:var(--soil);flex-shrink:0;margin-top:2px;cursor:pointer;}
+.ci label{font-size:12px;line-height:1.4;cursor:pointer;}
+.ci.done label{text-decoration:line-through;color:var(--ash);}
+
+/* TOAST / NAV / EMPTY */
+.empty{text-align:center;padding:40px 20px;color:var(--ash);}
+.empty-i{font-size:44px;margin-bottom:9px;}
+.empty p{font-size:12px;line-height:1.6;}
+.toast{position:fixed;bottom:82px;left:50%;transform:translateX(-50%) translateY(14px);background:var(--soil);color:#fff;padding:9px 16px;border-radius:20px;font-size:12px;font-weight:500;opacity:0;transition:all .28s;pointer-events:none;white-space:nowrap;box-shadow:var(--sh-lg);z-index:999;}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0);}
+.bnav{position:fixed;bottom:0;left:0;right:0;background:var(--white);border-top:1px solid var(--mist);display:flex;padding:5px 0 9px;box-shadow:0 -2px 12px rgba(15,35,24,.08);z-index:99;}
+.nb{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;background:none;border:none;cursor:pointer;color:var(--ash);font-size:8px;font-family:'Inter',sans-serif;font-weight:500;padding:3px;transition:color .14s;}
+.nb.on{color:var(--soil);}
+.nb .ni{font-size:18px;}
+.info-box{background:var(--dew);border:1px solid var(--sprout);border-radius:var(--r-sm);padding:10px 12px;font-size:11px;color:var(--forest);line-height:1.5;margin-top:4px;}
+.divider{height:1px;background:var(--mist);margin:10px 0;}
+.badge{display:inline-block;padding:2px 7px;border-radius:10px;font-size:9px;font-weight:700;}
+.badge-g{background:var(--dew);color:var(--moss);}
+.badge-y{background:var(--yolk-lt);color:#7a5000;}
+.badge-r{background:var(--crack-lt);color:var(--crack);}
+
+/* GRAPHIQUE */
+.chart-wrap{width:100%;overflow-x:auto;margin-bottom:10px;}
+.chart-bars{display:flex;align-items:flex-end;gap:6px;height:120px;padding:8px 0;}
+.chart-bar-grp{display:flex;flex-direction:column;align-items:center;gap:3px;flex:1;min-width:36px;}
+.chart-bar{width:100%;border-radius:4px 4px 0 0;transition:height .5s ease;min-height:2px;}
+.chart-bar-lbl{font-size:9px;color:var(--ash);text-align:center;writing-mode:vertical-lr;transform:rotate(180deg);height:36px;overflow:hidden;}
+.chart-bar-val{font-size:8px;color:var(--soil);font-weight:700;}
+</style>
+</head>
+<body>
+
+<!-- AUTH -->
+<div id="auth-screen">
+  <div class="auth-egg">🥚</div>
+  <div class="auth-brand">CouVaison</div>
+  <div class="auth-tagline">Suivi · Poule Goliath</div>
+  <div class="auth-card">
+    <div class="auth-segs">
+      <button class="auth-seg on" onclick="authTab('login',this)">Connexion</button>
+      <button class="auth-seg" onclick="authTab('reg',this)">Créer un compte</button>
+    </div>
+    <div id="auth-err" class="auth-err"></div>
+    <div id="t-login">
+      <div class="af"><label>Email</label><input type="email" id="li-email" placeholder="votre@email.com"></div>
+      <div class="af"><label>Mot de passe</label><input type="password" id="li-pass" placeholder="••••••••"></div>
+      <button class="auth-submit" onclick="doLogin()">Se connecter</button>
+    </div>
+    <div id="t-reg" style="display:none">
+      <div class="af"><label>Prénom</label><input type="text" id="rg-prenom" placeholder="Votre prénom"></div>
+      <div class="af"><label>Nom de la ferme</label><input type="text" id="rg-ferme" placeholder="Ex: Ferme Goliath"></div>
+      <div class="af"><label>Adresse</label><input type="text" id="rg-adresse" placeholder="Ville, Pays"></div>
+      <div class="af"><label>Email</label><input type="email" id="rg-email" placeholder="votre@email.com"></div>
+      <div class="af"><label>Mot de passe</label><input type="password" id="rg-pass" placeholder="Min. 6 caractères"></div>
+      <button class="auth-submit" onclick="doRegister()">Créer mon compte</button>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app-screen">
+  <header>
+    <div class="h-logo">🥚</div>
+    <div class="h-title">CouVaison <small>Poule Goliath</small></div>
+    <span class="h-farm" id="h-farm"></span>
+    <span id="conn-dot">⏳</span>
+    <button class="logout-btn" onclick="doLogout()">⏻</button>
+  </header>
+
+  <div id="p-saisie" class="panel on">
+    <div class="sec-head"><h2>Nouveau lot</h2><div class="sec-line"></div></div>
+    <div id="form-lot"></div>
+  </div>
+
+  <div id="p-lots" class="panel">
+    <div class="sec-head">
+      <h2>Mes lots</h2><div class="sec-line"></div>
+      <button class="sec-btn" onclick="renderLots()">↺</button>
+    </div>
+    <div id="lots-list"></div>
+  </div>
+
+  <div id="p-dash" class="panel">
+    <div class="sec-head"><h2>Tableau de bord</h2><div class="sec-line"></div></div>
+    <div class="itabs">
+      <button class="itab on" onclick="dashTab('stats',this)">📊 Stats</button>
+      <button class="itab" onclick="dashTab('finances',this)">💰 Finances</button>
+      <button class="itab" onclick="dashTab('fermes',this)">🏡 Fermes</button>
+      <button class="itab" onclick="dashTab('post',this)">🐣 Post-éclosion</button>
+    </div>
+    <div id="dash-stats"></div>
+    <div id="dash-finances" style="display:none"></div>
+    <div id="dash-fermes" style="display:none"></div>
+    <div id="dash-post" style="display:none"></div>
+  </div>
+
+  <div id="p-obs" class="panel">
+    <div class="sec-head"><h2>Observations</h2><div class="sec-line"></div></div>
+    <div id="obs"></div>
+  </div>
+
+  <div id="p-aide" class="panel">
+    <div class="sec-head"><h2>Guide & Aide</h2><div class="sec-line"></div></div>
+    <div id="aide"></div>
+  </div>
+
+  <nav class="bnav">
+    <button class="nb on" onclick="nav('saisie',this)"><span class="ni">✏️</span>Saisie</button>
+    <button class="nb" onclick="nav('lots',this)"><span class="ni">📋</span>Lots</button>
+    <button class="nb" onclick="nav('dash',this)"><span class="ni">📊</span>Bilan</button>
+    <button class="nb" onclick="nav('obs',this)"><span class="ni">📝</span>Notes</button>
+    <button class="nb" onclick="nav('aide',this)"><span class="ni">📖</span>Aide</button>
+  </nav>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getDatabase, ref, push, set, remove, onValue, get }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+const CFG={
+  apiKey:"AIzaSyCWriWEhQZAegovxqn26XHWh9UkvMJS2H0",
+  authDomain:"suivi-couvaison.firebaseapp.com",
+  databaseURL:"https://suivi-couvaison-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId:"suivi-couvaison",
+  storageBucket:"suivi-couvaison.firebasestorage.app",
+  messagingSenderId:"262308655490",
+  appId:"1:262308655490:web:3012ecaa4093aefee31f9b"
+};
+
+const fbApp=initializeApp(CFG);
+const auth=getAuth(fbApp);
+const db=getDatabase(fbApp);
+const ADMIN="jeanugh@gmail.com";
+
+let me=null,admin=true,lots=[],users={},postEclosions=[],depenses=[];
+let userProfile={prenom:'',ferme:'',adresse:''};
+
+/* ── UTILS ── */
+const $=id=>document.getElementById(id);
+const n=id=>parseFloat($(id)?.value)||0;
+const sv=(id,val)=>{const el=$(id);if(el)el.value=Math.max(0,val||0);};
+const fd=s=>{if(!s)return'—';const[y,m,d]=s.split('-');return`${d}/${m}/${y}`;};
+const today=()=>new Date().toISOString().split('T')[0];
+const fmtMoney=v=>`${Math.round(parseFloat(v||0)).toLocaleString("fr-FR")} FCFA`;
+
+window.toast=msg=>{
+  const t=$('toast');t.textContent=msg;t.classList.add('on');
+  setTimeout(()=>t.classList.remove('on'),2800);
+};
+
+/* ── AUTH UI ── */
+window.authTab=(id,btn)=>{
+  document.querySelectorAll('.auth-seg').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  $('t-login').style.display=id==='login'?'block':'none';
+  $('t-reg').style.display=id==='reg'?'block':'none';
+  $('auth-err').style.display='none';
+};
+const authErr=msg=>{const e=$('auth-err');e.textContent=msg;e.style.display='block';};
+const fErr=c=>({'auth/user-not-found':'Compte introuvable.','auth/wrong-password':'Mot de passe incorrect.',
+  'auth/invalid-email':'Email invalide.','auth/email-already-in-use':'Email déjà utilisé.',
+  'auth/weak-password':'Mot de passe trop court.','auth/invalid-credential':'Email ou mot de passe incorrect.'}[c]||'Erreur: '+c);
+
+window.doLogin=async()=>{
+  const e=$('li-email').value.trim(),p=$('li-pass').value;
+  if(!e||!p){authErr('Remplissez tous les champs.');return;}
+  try{await signInWithEmailAndPassword(auth,e,p);}catch(er){authErr(fErr(er.code));}
+};
+
+window.doRegister=async()=>{
+  const prenom=$('rg-prenom').value.trim(),ferme=$('rg-ferme').value.trim(),
+        adresse=$('rg-adresse').value.trim(),e=$('rg-email').value.trim(),p=$('rg-pass').value;
+  if(!prenom||!ferme||!e||!p){authErr('Remplissez tous les champs obligatoires.');return;}
+  if(p.length<6){authErr('Mot de passe : 6 caractères minimum.');return;}
+  try{
+    const c=await createUserWithEmailAndPassword(auth,e,p);
+    await updateProfile(c.user,{displayName:prenom});
+    await set(ref(db,'users/'+c.user.uid),{prenom,ferme,adresse,email:e,role:'admin',createdAt:Date.now()});
+  }catch(er){authErr(fErr(er.code));}
+};
+
+window.doLogout=async()=>{if(confirm('Se déconnecter ?'))await signOut(auth);};
+
+/* ── AUTH STATE ── */
+onAuthStateChanged(auth,async user=>{
+  if(user){
+    me=user;admin=true; // Tous les comptes ont les droits admin
+    $('auth-screen').style.display='none';
+    $('app-screen').style.display='block';
+    // Charger profil
+    const snap=await get(ref(db,'users/'+user.uid));
+    if(snap.exists()){
+      userProfile=snap.val();
+      $('h-farm').textContent=userProfile.ferme||'';
+    }
+    const prenom=user.displayName||user.email.split('@')[0];
+    // Afficher ferme dans header
+    $('h-farm').textContent=(userProfile.ferme||'').substring(0,12);
+    listen();buildForm();buildAide();
+  }else{
+    me=null;admin=false;lots=[];
+    $('auth-screen').style.display='flex';
+    $('app-screen').style.display='none';
+  }
+});
+
+/* ── LISTENERS ── */
+function listen(){
+  onValue(ref(db,'lots'),snap=>{
+    lots=[];
+    snap.forEach(c=>lots.push({_k:c.key,...c.val()}));
+    lots.sort((a,b)=>b.createdAt-a.createdAt);
+    $('conn-dot').textContent='🟢';
+    renderLots();
+    if($('p-dash').classList.contains('on')) renderDash();
+  });
+  onValue(ref(db,'observations'),snap=>{
+    renderObs(snap.val()||{text:'',by:'',at:''});
+  });
+  onValue(ref(db,'users'),snap=>{
+    users={};
+    snap.forEach(c=>{users[c.key]=c.val();});
+  });
+  onValue(ref(db,'postEclosions'),snap=>{
+    postEclosions=[];
+    snap.forEach(c=>postEclosions.push({_k:c.key,...c.val()}));
+  });
+  onValue(ref(db,'depenses'),snap=>{
+    depenses=[];
+    snap.forEach(c=>depenses.push({_k:c.key,...c.val()}));
+  });
+}
+
+/* ── NAVIGATION ── */
+window.nav=(id,btn)=>{
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.nb').forEach(b=>b.classList.remove('on'));
+  $('p-'+id).classList.add('on');btn.classList.add('on');
+  if(id==='lots')renderLots();
+  if(id==='dash'){renderDash();}
+  if(id==='saisie')buildForm();
+};
+
+window.dashTab=(id,btn)=>{
+  document.querySelectorAll('.itab').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  ['stats','finances','fermes','post'].forEach(t=>{
+    $('dash-'+t).style.display=t===id?'block':'none';
+  });
+  if(id==='stats')renderStats();
+  if(id==='finances')renderFinances();
+  if(id==='fermes')renderFermes();
+  if(id==='post')renderPost();
+};
+
+function renderDash(){renderStats();}
+
+/* ── FORM NOUVEAU LOT ── */
+function buildForm(){
+  $('form-lot').innerHTML=`
+    <div class="card">
+      <div class="card-label"><span class="bullet"></span>Collecte <span class="stage-pill pill-active">Étape 1</span></div>
+      <div class="fg">
+        <div class="f"><label>Date collecte</label><input type="date" id="f-dc" value="${today()}"></div>
+        <div class="f"><label>Qté collectée</label><input type="number" id="f-qt" placeholder="100" min="0" oninput="cBons()"></div>
+      </div>
+      <div class="fg">
+        <div class="f"><label>Fissurés</label><input type="number" id="f-fi" placeholder="0" min="0" oninput="cBons()"></div>
+        <div class="f"><label>Bons <span class="auto-tag">AUTO</span></label><input type="number" id="f-bo" readonly class="auto"></div>
+      </div>
+    </div>
+    <div class="arrow">↓</div>
+    <div class="card">
+      <div class="card-label"><span class="bullet"></span>Incubation <span class="stage-pill pill-active">Étape 2</span></div>
+      <div class="fg solo">
+        <div class="f"><label>Date d'entrée en incubation</label><input type="date" id="f-di"></div>
+      </div>
+    </div>
+    <button class="btn btn-p" onclick="saveStep1()">💾 Enregistrer la collecte</button>
+    <div class="info-box">ℹ️ Complétez le lot dans <strong>Mes Lots</strong> au fil des étapes.</div>`;
+}
+
+window.cBons=()=>sv('f-bo',n('f-qt')-n('f-fi'));
+window.cM1=k=>{const b=parseFloat($('ib-'+k)?.textContent)||0;sv('m1f-'+k,b-n('m1c-'+k)-n('m1m-'+k));};
+window.cM2=k=>sv('m2f-'+k,n('m1f-'+k)-n('m2c-'+k)-n('m2m-'+k));
+window.cEc=k=>sv('ecr-'+k,n('m2f-'+k)-n('ecma-'+k)-n('ecmn-'+k));
+
+/* ── SAVE ÉTAPE 1 ── */
+window.saveStep1=async()=>{
+  const dc=$('f-dc').value,qt=n('f-qt');
+  if(!dc||!qt){toast('⚠️ Date et quantité requises');return;}
+  const lot={
+    createdAt:Date.now(),createdBy:me.uid,authorName:me.displayName||me.email,
+    ferme:userProfile.ferme||'',adresse:userProfile.adresse||'',
+    dateCollecte:dc,dateIncub:$('f-di').value||'',
+    qte:qt,fissures:n('f-fi'),bons:n('f-bo'),
+    etape:'collecte',
+    m1Clairs:'',m1Mortalite:'',m1Fecondes:'',
+    m2Clairs:'',m2Mortalite:'',m2Fecondes:'',
+    malades:'',mortnes:'',resultat:'',
+    prixVente:'',revenu:''
+  };
+  try{
+    await push(ref(db,'lots'),lot);
+    buildForm();toast('✅ Lot enregistré !');
+  }catch(e){toast('❌ '+e.message);}
+};
+
+/* ── RENDER LOTS ── */
+window.renderLots=function(){
+  const el=$('lots-list');
+  const src=lots;
+  if(!src.length){
+    el.innerHTML=`<div class="empty"><div class="empty-i">🥚</div><p>Aucun lot enregistré.<br>Commencez par la saisie !</p></div>`;
+    return;
+  }
+  const en={collecte:1,mirage1:2,mirage2:3,eclosion:4};
+  el.innerHTML=src.map((lot,i)=>{
+    const e=en[lot.etape]||1;
+    const dots=[1,2,3,4].map(d=>`<div class="prog-s ${d<e?'done':d===e?'cur':''}"></div>`).join('');
+    const canM1=lot.etape==='collecte';
+    const canM2=lot.etape==='mirage1';
+    const canEc=lot.etape==='mirage2';
+    const canPost=lot.etape==='eclosion';
+    return `<div class="lot-card">
+      <div class="lot-hd" onclick="tLot('${lot._k}')">
+        <div class="lot-num">${src.length-i}</div>
+        <div class="lot-info">
+          <div class="lot-d">${fd(lot.dateCollecte)} · ${lot.ferme||'—'}</div>
+          <div class="lot-s">${lot.qte} œufs · ${lot.etape==='eclosion'?'Terminé ✅':'En cours'}</div>
+        </div>
+        <div class="lot-res">${lot.resultat!==''?lot.resultat:'—'} 🐥</div>
+      </div>
+      <div class="lot-bd" id="bd-${lot._k}">
+        <div class="prog">${dots}</div>
+        <div class="lot-author">👤 ${lot.authorName||'—'} · 🏡 ${lot.ferme||'—'}</div>
+        <div class="chips">
+          <div class="chip hl"><div class="cl">Collecte</div><div class="cv">${lot.qte} œufs</div></div>
+          <div class="chip"><div class="cl">Fissurés</div><div class="cv">${lot.fissures||0}</div></div>
+          <div class="chip hl"><div class="cl">Bons → Incub.</div><div class="cv" id="ib-${lot._k}">${lot.bons||0}</div></div>
+          <div class="chip"><div class="cl">Date incubation</div><div class="cv">${fd(lot.dateIncub)}</div></div>
+        </div>
+        <!-- MIRAGE J7 -->
+        <div class="card ${canM1?'':'locked'}" style="margin-top:6px;">
+          <div class="card-label"><span class="bullet"></span>Mirage J7
+            <span class="stage-pill ${canM1?'pill-active':e>1?'pill-done':'pill-wait'}">${canM1?'À saisir':e>1?'Validé ✓':'En attente'}</span>
+            ${canM1?'':'<span class="lock-tag">🔒</span>'}
+          </div>
+          <div class="fg">
+            <div class="f"><label>Clairs</label><input type="number" id="m1c-${lot._k}" value="${lot.m1Clairs||''}" placeholder="0" min="0" ${canM1?`oninput="cM1('${lot._k}')"`:' readonly'}></div>
+            <div class="f"><label>Mortalité</label><input type="number" id="m1m-${lot._k}" value="${lot.m1Mortalite||''}" placeholder="0" min="0" ${canM1?`oninput="cM1('${lot._k}')"`:' readonly'}></div>
+          </div>
+          <div class="f"><label>Fécondés J7 <span class="auto-tag">AUTO</span></label><input type="number" id="m1f-${lot._k}" value="${lot.m1Fecondes||''}" readonly class="auto"></div>
+          ${canM1?`<button class="btn btn-p" style="margin-top:9px;" onclick="sM1('${lot._k}')">💾 Valider Mirage J7</button>`:''}
+        </div>
+        <!-- MIRAGE J14 -->
+        <div class="card ${canM2?'':'locked'}" style="margin-top:6px;">
+          <div class="card-label"><span class="bullet"></span>Mirage J14
+            <span class="stage-pill ${canM2?'pill-active':e>2?'pill-done':'pill-wait'}">${canM2?'À saisir':e>2?'Validé ✓':'En attente'}</span>
+            ${canM2?'':'<span class="lock-tag">🔒</span>'}
+          </div>
+          <div class="fg">
+            <div class="f"><label>Clairs</label><input type="number" id="m2c-${lot._k}" value="${lot.m2Clairs||''}" placeholder="0" min="0" ${canM2?`oninput="cM2('${lot._k}')"`:' readonly'}></div>
+            <div class="f"><label>Mortalité</label><input type="number" id="m2m-${lot._k}" value="${lot.m2Mortalite||''}" placeholder="0" min="0" ${canM2?`oninput="cM2('${lot._k}')"`:' readonly'}></div>
+          </div>
+          <div class="f"><label>Fécondés J14 <span class="auto-tag">AUTO</span></label><input type="number" id="m2f-${lot._k}" value="${lot.m2Fecondes||''}" readonly class="auto"></div>
+          ${canM2?`<button class="btn btn-p" style="margin-top:9px;" onclick="sM2('${lot._k}')">💾 Valider Mirage J14</button>`:''}
+        </div>
+        <!-- ÉCLOSION -->
+        <div class="card ${canEc?'':'locked'}" style="margin-top:6px;">
+          <div class="card-label"><span class="bullet"></span>Éclosion
+            <span class="stage-pill ${canEc?'pill-active':e>3?'pill-done':'pill-wait'}">${canEc?'À saisir':e>3?'Terminé ✅':'En attente'}</span>
+            ${canEc?'':'<span class="lock-tag">🔒</span>'}
+          </div>
+          <div class="fg">
+            <div class="f"><label>Malades</label><input type="number" id="ecma-${lot._k}" value="${lot.malades||''}" placeholder="0" min="0" ${canEc?`oninput="cEc('${lot._k}')"`:' readonly'}></div>
+            <div class="f"><label>Mort-nés</label><input type="number" id="ecmn-${lot._k}" value="${lot.mortnes||''}" placeholder="0" min="0" ${canEc?`oninput="cEc('${lot._k}')"`:' readonly'}></div>
+          </div>
+          <div class="f"><label>🐥 Poussins <span class="auto-tag">AUTO</span></label>
+            <input type="number" id="ecr-${lot._k}" value="${lot.resultat!==''?lot.resultat:''}" readonly style="font-size:18px;font-weight:700;color:var(--forest);background:var(--dew);text-align:center;">
+          </div>
+          ${canEc?`
+          <div class="divider"></div>
+          <div class="f"><label>💰 Prix de vente par poussin (FCFA)</label><input type="number" id="ecpx-${lot._k}" placeholder="0" min="0" ></div>
+          <button class="btn btn-p" style="margin-top:9px;" onclick="sEc('${lot._k}')">✅ Valider l'éclosion</button>`:''}
+        </div>
+        <!-- POST-ÉCLOSION -->
+        ${canPost?`
+        <div class="card" style="margin-top:6px;">
+          <div class="card-label"><span class="bullet"></span>🐣 Suivi post-éclosion</div>
+          <div class="fg">
+            <div class="f"><label>Morts post-éclosion</label><input type="number" id="pe-morts-${lot._k}" placeholder="0" min="0"></div>
+            <div class="f"><label>Date observation</label><input type="date" id="pe-date-${lot._k}" value="${today()}"></div>
+          </div>
+          <div class="fg solo">
+            <div class="f"><label>Note</label><input type="text" id="pe-note-${lot._k}" placeholder="Observation..."></div>
+          </div>
+          <button class="btn btn-g btn-sm" onclick="savePost('${lot._k}')">➕ Ajouter observation</button>
+          <div id="pe-list-${lot._k}" style="margin-top:8px;">${renderPostList(lot._k)}</div>
+        </div>`:''}
+        <div class="lot-admin-row"><button class="btn btn-d btn-sm" onclick="dLot('${lot._k}')">🗑 Supprimer</button><button class="btn btn-w btn-sm" onclick="rLot('${lot._k}')">↺ Réinitialiser</button></div>
+      </div>
+    </div>`;
+  }).join('');
+};
+
+window.tLot=k=>$('bd-'+k)?.classList.toggle('on');
+
+function renderPostList(lotKey){
+  const items=postEclosions.filter(p=>p.lotKey===lotKey);
+  if(!items.length)return'';
+  return items.map(p=>`<div style="background:var(--shell);border-radius:var(--r-sm);padding:7px 9px;margin-top:5px;font-size:11px;">
+    <strong>${fd(p.date)}</strong> · ${p.morts} mort(s) · ${p.note||'—'}
+  </div>`).join('');
+}
+
+/* ── SAVE ÉTAPES ── */
+window.sM1=async k=>{
+  const lot=lots.find(l=>l._k===k);
+  const cl=n('m1c-'+k),mo=n('m1m-'+k),fec=Math.max(0,(lot?.bons||0)-cl-mo);
+  try{
+    await set(ref(db,'lots/'+k+'/m1Clairs'),cl);
+    await set(ref(db,'lots/'+k+'/m1Mortalite'),mo);
+    await set(ref(db,'lots/'+k+'/m1Fecondes'),fec);
+    await set(ref(db,'lots/'+k+'/etape'),'mirage1');
+    toast('✅ Mirage J7 validé et verrouillé !');
+  }catch(e){toast('❌ '+e.message);}
+};
+
+window.sM2=async k=>{
+  const lot=lots.find(l=>l._k===k);
+  const cl=n('m2c-'+k),mo=n('m2m-'+k),fec=Math.max(0,(lot?.m1Fecondes||0)-cl-mo);
+  try{
+    await set(ref(db,'lots/'+k+'/m2Clairs'),cl);
+    await set(ref(db,'lots/'+k+'/m2Mortalite'),mo);
+    await set(ref(db,'lots/'+k+'/m2Fecondes'),fec);
+    await set(ref(db,'lots/'+k+'/etape'),'mirage2');
+    toast('✅ Mirage J14 validé et verrouillé !');
+  }catch(e){toast('❌ '+e.message);}
+};
+
+window.sEc=async k=>{
+  const lot=lots.find(l=>l._k===k);
+  const ma=n('ecma-'+k),mn=n('ecmn-'+k),res=Math.max(0,(lot?.m2Fecondes||0)-ma-mn);
+  const px=parseFloat($('ecpx-'+k)?.value)||0;
+  const rev=res*px;
+  try{
+    await set(ref(db,'lots/'+k+'/malades'),ma);
+    await set(ref(db,'lots/'+k+'/mortnes'),mn);
+    await set(ref(db,'lots/'+k+'/resultat'),res);
+    await set(ref(db,'lots/'+k+'/prixVente'),px);
+    await set(ref(db,'lots/'+k+'/revenu'),rev);
+    await set(ref(db,'lots/'+k+'/etape'),'eclosion');
+    toast('🐥 Éclosion validée !');
+  }catch(e){toast('❌ '+e.message);}
+};
+
+/* ── POST-ÉCLOSION ── */
+window.savePost=async k=>{
+  const morts=n('pe-morts-'+k),date=$('pe-date-'+k)?.value,note=$('pe-note-'+k)?.value||'';
+  if(!date){toast('⚠️ Date requise');return;}
+  try{
+    await push(ref(db,'postEclosions'),{lotKey:k,morts,date,note,createdAt:Date.now()});
+    toast('✅ Observation enregistrée');
+    if($('pe-morts-'+k))$('pe-morts-'+k).value='';
+    if($('pe-note-'+k))$('pe-note-'+k).value='';
+  }catch(e){toast('❌ '+e.message);}
+};
+
+/* ── ADMIN ACTIONS ── */
+window.dLot=async k=>{
+  if(!confirm('Supprimer ce lot définitivement de la base de données ?'))return;
+  try{
+    await remove(ref(db,'lots/'+k));
+    toast('🗑 Lot supprimé de Firebase');
+  }catch(e){toast('❌ '+e.message);}
+};
+
+window.rLot=async k=>{
+  if(!confirm('Réinitialiser ce lot à l\'étape Collecte ?'))return;
+  try{
+    const lot=lots.find(l=>l._k===k);
+    await set(ref(db,'lots/'+k),{...lot,etape:'collecte',
+      m1Clairs:'',m1Mortalite:'',m1Fecondes:'',
+      m2Clairs:'',m2Mortalite:'',m2Fecondes:'',
+      malades:'',mortnes:'',resultat:'',prixVente:'',revenu:''});
+    toast('↺ Lot réinitialisé');
+  }catch(e){toast('❌ '+e.message);}
+};
+
+/* ── STATS ── */
+function pc(n,d){return d?Math.round(n/d*1000)/10:0;}
+
+function renderStats(){
+  const el=$('dash-stats');
+  if(!lots.length){el.innerHTML=`<div class="empty"><div class="empty-i">📊</div><p>Aucune donnée.</p></div>`;return;}
+  const T=k=>lots.reduce((s,l)=>s+(parseFloat(l[k])||0),0);
+  const qte=T('qte'),bons=T('bons'),f1=T('m1Fecondes'),f2=T('m2Fecondes'),
+        pous=T('resultat'),fiss=T('fissures'),c1=T('m1Clairs'),
+        mo1=T('m1Mortalite'),c2=T('m2Clairs'),mo2=T('m2Mortalite'),
+        mal=T('malades'),mn=T('mortnes');
+  const term=lots.filter(l=>l.etape==='eclosion').length;
+
+  // Stats par mois
+  const byMonth={};
+  lots.forEach(lot=>{
+    if(!lot.dateCollecte)return;
+    const mois=lot.dateCollecte.substring(0,7);
+    if(!byMonth[mois])byMonth[mois]={qte:0,pous:0,lots:0};
+    byMonth[mois].qte+=(lot.qte||0);
+    byMonth[mois].pous+=(lot.resultat||0);
+    byMonth[mois].lots++;
+  });
+  const moisKeys=Object.keys(byMonth).sort().slice(-6);
+  const maxPous=Math.max(...moisKeys.map(m=>byMonth[m].pous),1);
+
+  const rates=[
+    ['Taux de fissure',pc(fiss,qte),'#c0392b'],
+    ['Fécondité J7',pc(f1,bons),'#27ae60'],
+    ['Fécondité J14',pc(f2,f1),'#1a7a4a'],
+    ["Taux d'éclosion",pc(pous,f2),'#0f2318'],
+    ['Réussite globale',pc(pous,qte),'#e9a825'],
+  ];
+
+  el.innerHTML=`
+    <div class="kpis">
+      <div class="kpi"><div class="kv">${lots.length}</div><div class="kl">Lots suivis</div></div>
+      <div class="kpi"><div class="kv">${term}</div><div class="kl">Terminés</div></div>
+      <div class="kpi"><div class="kv">${qte}</div><div class="kl">Œufs collectés</div></div>
+      <div class="kpi y"><div class="kv">${fiss+c1+mo1+c2+mo2+mal+mn}</div><div class="kl">Total pertes</div></div>
+      <div class="kpi g full"><div class="kv">${pous} 🐥</div><div class="kl">Total poussins</div><div class="kp">${pc(pous,qte)}% de réussite globale</div></div>
+    </div>
+    ${moisKeys.length?`
+    <div class="card">
+      <div class="card-label"><span class="bullet"></span>Évolution mensuelle (poussins)</div>
+      <div class="chart-wrap">
+        <div class="chart-bars">
+          ${moisKeys.map(m=>{
+            const h=Math.round((byMonth[m].pous/maxPous)*100);
+            return`<div class="chart-bar-grp">
+              <div class="chart-bar-val">${byMonth[m].pous}</div>
+              <div class="chart-bar" style="height:${h}%;background:var(--leaf);width:100%;"></div>
+              <div class="chart-bar-lbl">${m.substring(5)}//${m.substring(2,4)}</div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+    </div>`:''}
+    <div class="card">
+      <div class="card-label"><span class="bullet"></span>Taux & performances</div>
+      <div class="rate-rows">${rates.map(([l,v,c])=>`
+        <div class="rr"><div class="rl">${l}</div>
+        <div class="bar-w"><div class="bar-f" style="width:${Math.min(v,100)}%;background:${c}"></div></div>
+        <div class="rv">${v}%</div></div>`).join('')}
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-label"><span class="bullet"></span>Détail des pertes</div>
+      <div class="rate-rows">${[['Fissurés',fiss],['Clairs J7',c1],['Mortalité J7',mo1],['Clairs J14',c2],['Mortalité J14',mo2],['Malades',mal],['Mort-nés',mn]].map(([l,v])=>`
+        <div class="rr"><div class="rl">${l}</div><div class="rv" style="color:var(--crack)">${v}</div></div>`).join('')}
+      </div>
+    </div>
+    <div style="display:flex;gap:7px;margin-top:4px;">
+      <button class="btn btn-g" onclick="exportExcel()" style="flex:1">📥 Export Excel</button>
+      <button class="btn btn-g" onclick="exportPDF()" style="flex:1">📄 Export PDF</button>
+    </div>
+    `<button class="btn btn-d" onclick="resetAll()" style="margin-top:6px;">⚠️ Réinitialiser TOUTES les données</button>``;
+}
+
+/* ── FINANCES ── */
+function renderFinances(){
+  const el=$('dash-finances');
+  const termines=lots.filter(l=>l.etape==='eclosion');
+
+  const totalRevenu=termines.reduce((s,l)=>s+(parseFloat(l.revenu)||0),0);
+  const totalPous=termines.reduce((s,l)=>s+(parseFloat(l.resultat)||0),0);
+  const totalDep=depenses.reduce((s,d)=>s+(parseFloat(d.montant)||0),0);
+  const benefice=totalRevenu-totalDep;
+
+  el.innerHTML=`
+    <div class="kpis">
+      <div class="kpi g"><div class="kv">${fmtMoney(totalRevenu)}</div><div class="kl">Revenus totaux</div></div>
+      <div class="kpi y"><div class="kv">${fmtMoney(totalDep)}</div><div class="kl">Dépenses totales</div></div>
+      <div class="kpi full ${benefice>=0?'g':''}"><div class="kv">${fmtMoney(benefice)}</div><div class="kl">${benefice>=0?'Bénéfice net':'Déficit net'}</div></div>
+    </div>
+    <div class="card">
+      <div class="card-label"><span class="bullet"></span>💰 Revenus par lot</div>
+      <div class="rate-rows">${termines.length?termines.map(l=>`
+        <div class="rr">
+          <div class="rl">${fd(l.dateCollecte)} · ${l.ferme||'—'}<br>
+            <span style="font-size:10px;color:var(--ash)">${l.resultat||0} poussins × ${fmtMoney(l.prixVente)}</span>
+          </div>
+          <div class="fin-val pos">${fmtMoney(l.revenu)}</div>
+        </div>`).join(''):'<div class="rr"><div class="rl" style="color:var(--ash)">Aucun lot terminé avec prix</div></div>'}
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-label"><span class="bullet"></span>➕ Ajouter une dépense</div>
+      <div class="fg">
+        <div class="f"><label>Catégorie</label>
+          <select id="dep-cat" style="font-family:Inter,sans-serif;">
+            <option>Électricité couveuse</option>
+            <option>Alimentation poussins</option>
+            <option>Médicaments</option>
+            <option>Matériel</option>
+            <option>Autre</option>
+          </select>
+        </div>
+        <div class="f"><label>Montant ($)</label><input type="number" id="dep-mnt" placeholder="0" min="0" ></div>
+      </div>
+      <div class="fg">
+        <div class="f"><label>Date</label><input type="date" id="dep-date" value="${today()}"></div>
+        <div class="f"><label>Note</label><input type="text" id="dep-note" placeholder="Optionnel"></div>
+      </div>
+      <button class="btn btn-p" onclick="saveDep()">💾 Enregistrer la dépense</button>
+    </div>
+    <div class="card">
+      <div class="card-label"><span class="bullet"></span>📋 Historique des dépenses</div>
+      <div class="rate-rows">${depenses.length?[...depenses].sort((a,b)=>b.createdAt-a.createdAt).map(d=>`
+        <div class="rr">
+          <div class="rl">${d.categorie}<br><span style="font-size:10px;color:var(--ash)">${fd(d.date)} · ${d.note||''}</span></div>
+          <div class="fin-val neg">-${fmtMoney(d.montant)}</div>
+        </div>`).join(''):'<div class="rr"><div class="rl" style="color:var(--ash)">Aucune dépense enregistrée</div></div>'}
+      </div>
+    </div>`;
+}
+
+window.saveDep=async()=>{
+  const mnt=parseFloat($('dep-mnt')?.value)||0;
+  const date=$('dep-date')?.value;
+  if(!mnt||!date){toast('⚠️ Montant et date requis');return;}
+  try{
+    await push(ref(db,'depenses'),{
+      categorie:$('dep-cat')?.value||'Autre',
+      montant:mnt,date,
+      note:$('dep-note')?.value||'',
+      createdAt:Date.now(),
+      createdBy:me.uid,
+      ferme:userProfile.ferme||''
+    });
+    $('dep-mnt').value='';$('dep-note').value='';
+    toast('✅ Dépense enregistrée');
+    renderFinances();
+  }catch(e){toast('❌ '+e.message);}
+};
+
+/* ── MULTI-FERMES ── */
+function renderFermes(){
+  const el=$('dash-fermes');
+  // Grouper lots par ferme
+  const fermes={};
+  lots.forEach(lot=>{
+    const f=lot.ferme||'Sans nom';
+    if(!fermes[f])fermes[f]={lots:[],qte:0,pous:0,adresse:lot.adresse||''};
+    fermes[f].lots.push(lot);
+    fermes[f].qte+=(lot.qte||0);
+    fermes[f].pous+=(lot.resultat||0);
+  });
+
+  if(!Object.keys(fermes).length){
+    el.innerHTML=`<div class="empty"><div class="empty-i">🏡</div><p>Aucune ferme enregistrée.</p></div>`;
+    return;
+  }
+
+  el.innerHTML=`
+    <div class="info-box" style="margin-bottom:12px;">ℹ️ Les fermes sont créées automatiquement lors de l'inscription des collaborateurs.</div>
+    ${Object.entries(fermes).map(([nom,data])=>{
+      const taux=data.qte?Math.round(data.pous/data.qte*100):0;
+      const term=data.lots.filter(l=>l.etape==='eclosion').length;
+      return`<div class="farm-card">
+        <div class="farm-name">🏡 ${nom}</div>
+        <div class="farm-addr">📍 ${data.adresse||'Adresse non renseignée'}</div>
+        <div class="farm-stats">
+          <div class="fstat"><div class="fv">${data.lots.length}</div><div class="fl">Lots</div></div>
+          <div class="fstat"><div class="fv">${data.pous}</div><div class="fl">Poussins</div></div>
+          <div class="fstat"><div class="fv">${taux}%</div><div class="fl">Réussite</div></div>
+        </div>
+        <div style="margin-top:8px;display:flex;gap:5px;align-items:center;">
+          <span class="badge ${taux>=70?'badge-g':taux>=50?'badge-y':'badge-r'}">${taux>=70?'✅ Excellente':taux>=50?'⚠️ Moyenne':'❌ Faible'}</span>
+          <span style="font-size:10px;color:var(--ash)">${term} lot(s) terminé(s)</span>
+        </div>
+      </div>`;
+    }).join('')}`;
+}
+
+/* ── POST-ÉCLOSION DASHBOARD ── */
+function renderPost(){
+  const el=$('dash-post');
+  const lotsTermines=lots.filter(l=>l.etape==='eclosion');
+  if(!lotsTermines.length){
+    el.innerHTML=`<div class="empty"><div class="empty-i">🐣</div><p>Aucun lot terminé.<br>Complétez d'abord une éclosion.</p></div>`;
+    return;
+  }
+  el.innerHTML=`
+    <div class="info-box" style="margin-bottom:12px;">ℹ️ Ajoutez des observations post-éclosion depuis chaque lot dans l'onglet <strong>Mes Lots</strong>.</div>
+    ${lotsTermines.map(lot=>{
+      const obs=postEclosions.filter(p=>p.lotKey===lot._k);
+      const totalMorts=obs.reduce((s,p)=>s+(p.morts||0),0);
+      const surv=Math.max(0,(lot.resultat||0)-totalMorts);
+      return`<div class="post-row">
+        <div class="post-header">
+          <div class="post-lot-name">🐥 Lot du ${fd(lot.dateCollecte)} · ${lot.ferme||'—'}</div>
+          <div class="post-date">${lot.resultat||0} poussins</div>
+        </div>
+        <div class="farm-stats" style="margin-bottom:8px;">
+          <div class="fstat"><div class="fv">${lot.resultat||0}</div><div class="fl">Écloss</div></div>
+          <div class="fstat"><div class="fv" style="color:var(--crack)">${totalMorts}</div><div class="fl">Morts</div></div>
+          <div class="fstat"><div class="fv" style="color:var(--moss)">${surv}</div><div class="fl">Survivants</div></div>
+        </div>
+        ${obs.length?obs.map(o=>`<div style="background:var(--shell);border-radius:var(--r-sm);padding:6px 9px;margin-bottom:4px;font-size:11px;">
+          📅 ${fd(o.date)} · ${o.morts} mort(s) · ${o.note||'—'}
+        </div>`).join(''):'<div style="font-size:11px;color:var(--ash)">Aucune observation enregistrée</div>'}
+      </div>`;
+    }).join('')}`;
+}
+
+/* ── OBSERVATIONS ── */
+function renderObs(d){
+  const el=$('obs');if(!el)return;
+  el.innerHTML=`<div class="card">
+      <div class="card-label"><span class="bullet"></span>📝 Observations partagées</div>
+      <textarea class="obs-ta" id="obs-ta" placeholder="Rédigez vos observations pour vos collaborateurs…">${d.text||''}</textarea>
+      <button class="btn btn-p" style="margin-top:9px;" onclick="saveObs()">💾 Publier</button>
+      ${d.at?`<p class="obs-meta">Mis à jour le ${new Date(d.at).toLocaleString('fr-FR')}</p>`:''}
+    </div>`;
+  }else{
+    el.innerHTML=`<div class="card">
+      <div class="card-label"><span class="bullet"></span>📝 Observations partagées</div>
+      ${d.text?`<div class="obs-view">${d.text}</div><p class="obs-meta">Publié le ${d.at?new Date(d.at).toLocaleString('fr-FR'):''}</p>`
+        :'<p style="color:var(--ash);font-size:13px;">Aucune observation pour le moment.</p>'}
+    </div>`;
+  }
+}
+
+window.saveObs=async()=>{
+  const text=$('obs-ta')?.value||'';
+  try{
+    await set(ref(db,'observations'),{text,by:me.displayName||'Admin',at:Date.now()});
+    toast('✅ Observations publiées !');
+  }catch(e){toast('❌ '+e.message);}
+};
+
+/* ── EXPORT EXCEL ── */
+window.exportExcel=()=>{
+  if(!lots.length){toast('Aucune donnée à exporter');return;}
+  const data=lots.map((l,i)=>({
+    'N°':i+1,'Ferme':l.ferme||'—','Auteur':l.authorName||'—',
+    'Date Collecte':fd(l.dateCollecte),'Qté':l.qte||0,'Fissurés':l.fissures||0,'Bons':l.bons||0,
+    'Date Incubation':fd(l.dateIncub),
+    'Clairs J7':l.m1Clairs||0,'Mortalité J7':l.m1Mortalite||0,'Fécondés J7':l.m1Fecondes||0,
+    'Clairs J14':l.m2Clairs||0,'Mortalité J14':l.m2Mortalite||0,'Fécondés J14':l.m2Fecondes||0,
+    'Malades':l.malades||0,'Mort-nés':l.mortnes||0,'Poussins':l.resultat||0,
+    'Prix/Poussin (FCFA)':l.prixVente||0,'Revenu':l.revenu||0,'Étape':l.etape||'—'
+  }));
+  const ws=XLSX.utils.json_to_sheet(data);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,'Lots',ws);
+  const dep=depenses.map(d=>({'Date':fd(d.date),'Ferme':d.ferme||'—','Catégorie':d.categorie,'Montant':d.montant,'Note':d.note||''}));
+  if(dep.length){const ws2=XLSX.utils.json_to_sheet(dep);XLSX.utils.book_append_sheet(wb,'Dépenses',ws2);}
+  XLSX.writeFile(wb,'CouVaison_Export_'+today()+'.xlsx');
+  toast('📥 Export Excel téléchargé !');
+};
+
+/* ── EXPORT PDF ── */
+window.exportPDF=()=>{
+  if(!lots.length){toast('Aucune donnée à exporter');return;}
+  const T=k=>lots.reduce((s,l)=>s+(parseFloat(l[k])||0),0);
+  const qte=T('qte'),pous=T('resultat'),f2=T('m2Fecondes');
+  const totalRev=lots.reduce((s,l)=>s+(parseFloat(l.revenu)||0),0);
+  const totalDep=depenses.reduce((s,d)=>s+(parseFloat(d.montant)||0),0);
+  const w=window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>CouVaison – Rapport</title>
+  <style>
+    body{font-family:Arial,sans-serif;padding:30px;color:#1a2820;max-width:800px;margin:0 auto;}
+    h1{color:#0f2318;font-size:24px;margin-bottom:4px;}
+    .sub{color:#6b8270;font-size:12px;margin-bottom:24px;}
+    h2{color:#2d6a4f;font-size:16px;border-bottom:2px solid #d8f3dc;padding-bottom:6px;margin:20px 0 12px;}
+    table{width:100%;border-collapse:collapse;margin-bottom:16px;font-size:11px;}
+    th{background:#0f2318;color:#fff;padding:7px 8px;text-align:left;}
+    td{padding:6px 8px;border-bottom:1px solid #dce8e0;}
+    tr:nth-child(even) td{background:#f5f0e8;}
+    .kpi-row{display:flex;gap:16px;margin-bottom:20px;flex-wrap:wrap;}
+    .kpi-box{background:#d8f3dc;border-radius:8px;padding:12px 16px;text-align:center;min-width:100px;}
+    .kpi-val{font-size:24px;font-weight:700;color:#0f2318;}
+    .kpi-lbl{font-size:10px;color:#6b8270;text-transform:uppercase;}
+    .fin-box{background:#fef3d0;border-radius:8px;padding:12px 16px;margin-bottom:12px;}
+    @media print{body{padding:10px;}}
+  </style></head><body>
+  <h1>🥚 CouVaison – Rapport de couvaison</h1>
+  <div class="sub">Généré le ${new Date().toLocaleString('fr-FR')} · ${userProfile.ferme||'Ferme'} · ${userProfile.adresse||''}</div>
+  <h2>📊 Résumé global</h2>
+  <div class="kpi-row">
+    <div class="kpi-box"><div class="kpi-val">${lots.length}</div><div class="kpi-lbl">Lots</div></div>
+    <div class="kpi-box"><div class="kpi-val">${qte}</div><div class="kpi-lbl">Œufs collectés</div></div>
+    <div class="kpi-box"><div class="kpi-val">${pous}</div><div class="kpi-lbl">Poussins</div></div>
+    <div class="kpi-box"><div class="kpi-val">${qte?Math.round(pous/qte*100):0}%</div><div class="kpi-lbl">Réussite</div></div>
+  </div>
+  <h2>💰 Bilan financier</h2>
+  <div class="fin-box">
+    <div>Revenus totaux : <strong>${fmtMoney(totalRev)}</strong></div>
+    <div>Dépenses totales : <strong>${fmtMoney(totalDep)}</strong></div>
+    <div style="margin-top:8px;font-size:16px;font-weight:700;color:${totalRev-totalDep>=0?'#2d6a4f':'#c0392b'}">
+      ${totalRev-totalDep>=0?'Bénéfice':'Déficit'} : ${fmtMoney(Math.abs(totalRev-totalDep))}
+    </div>
+  </div>
+  <h2>📋 Détail des lots</h2>
+  <table><tr>
+    <th>N°</th><th>Ferme</th><th>Date</th><th>Qté</th><th>Fécondés J14</th><th>Poussins</th><th>Réussite</th><th>Revenu</th>
+  </tr>${lots.map((l,i)=>`<tr>
+    <td>${i+1}</td><td>${l.ferme||'—'}</td><td>${fd(l.dateCollecte)}</td>
+    <td>${l.qte||0}</td><td>${l.m2Fecondes||0}</td><td>${l.resultat||0}</td>
+    <td>${l.qte?Math.round((l.resultat||0)/(l.qte)*100):0}%</td>
+    <td>${fmtMoney(l.revenu)}</td>
+  </tr>`).join('')}</table>
+  <script>window.onload=()=>{window.print();}<\/script>
+  </body></html>`);
+  w.document.close();
+  toast('📄 PDF en cours de génération...');
+};
+
+/* ── RESET ALL ── */
+window.resetAll=async()=>{
+  if(!confirm('⚠️ Supprimer TOUS les lots ? Irréversible.'))return;
+  if(!confirm('Dernière confirmation ?'))return;
+  try{await remove(ref(db,'lots'));toast('🗑 Toutes les données supprimées');}
+  catch(e){toast('❌ '+e.message);}
+};
+
+/* ── AIDE ── */
+function buildAide(){
+  const el=$('aide');if(!el)return;
+  const ck=['Nettoyer et désinfecter la couveuse','Vérifier et calibrer le thermomètre',
+    'Préchauffer la couveuse 24h avant introduction','Sélectionner des œufs sains et frais (< 7 jours)',
+    'Ne pas laver les œufs','Remplir le bac d\'eau pour l\'humidité',
+    'Placer les œufs pointe vers le bas','Vérifier température J1 : 37,5°C – 38°C',
+    'Vérifier humidité J1 : 55% – 60%','Mettre en place le retournement',
+    'Retourner les œufs 3 à 5 fois/jour (J1 à J18)','1er Mirage J7 : retirer clairs et morts',
+    '2ème Mirage J14 : contrôler développement','Arrêter le retournement à J18',
+    'Augmenter l\'humidité à 65%–70% à partir de J18','Ne pas ouvrir la couveuse entre J19 et J21',
+    'Laisser sécher les poussins 12–24h dans la couveuse','Transférer les poussins en démarrage chauffé'];
+  const guide=[
+    ['Sélection des œufs','Choisissez des œufs frais (moins de 7 jours), propres, sans fissure. Écartez les œufs trop petits, trop gros ou à coquille anormale.'],
+    ['Préparation couveuse','Nettoyez, désinfectez, préchauffez 24h à 37,5°C–38°C avec 55%–60% d\'humidité.'],
+    ['Incubation J1–J7','Maintenez 37,5°C–38°C. Retournez 3 à 5 fois/jour. Vérifiez le niveau d\'eau quotidiennement.'],
+    ['1er Mirage J7','Éclairez chaque œuf dans l\'obscurité. Fécondé = ramifications sanguines. Retirez les clairs et les morts.'],
+    ['Incubation J8–J14','Poursuivez le retournement. L\'embryon occupe la moitié de l\'œuf. Surveillance quotidienne.'],
+    ['2ème Mirage J14','L\'embryon occupe les 2/3 de l\'œuf. Retirez les œufs sans activité.'],
+    ['Mise en éclosoir J18','Arrêtez le retournement. Posez à plat. Montez l\'humidité à 65%–70%. Ne plus ouvrir.'],
+    ['Éclosion J21','Laissez les poussins sécher 12–24h. N\'aidez pas sauf urgence absolue.'],
+  ];
+  const params=[
+    ['Température J1–J18','37,5°C – 38°C'],['Température J18–J21','37°C – 37,5°C'],
+    ['Humidité J1–J17','55% – 60%'],['Humidité J18–J21','65% – 70%'],
+    ['Retournement','3 à 5 fois/jour (J1–J18)'],['1er Mirage','Jour 7'],
+    ['2ème Mirage','Jour 14'],['Arrêt retournement','Jour 18'],
+    ['Durée incubation','21 jours'],['Séchage poussins','12–24h dans couveuse'],
+  ];
+  el.innerHTML=`
+    <div class="card">
+      <div class="aide-h3">✅ Checklist débutant</div>
+      <div class="check-bar-wrap"><div class="check-bar-fill" id="cb-fill" style="width:0%"></div></div>
+      <div class="check-pct-lbl" id="cb-lbl">0 / ${ck.length} étapes</div>
+      ${ck.map((t,i)=>`<div class="ci" id="ci${i}">
+        <input type="checkbox" id="ck${i}" onchange="updCk()">
+        <label for="ck${i}">${t}</label></div>`).join('')}
+    </div>
+    <div class="card">
+      <div class="aide-h3">📖 Guide complet</div>
+      ${guide.map(([t,p],i)=>`<div class="step-row">
+        <div class="step-n">${i+1}</div>
+        <div class="step-c"><strong>${t}</strong><p>${p}</p></div></div>`).join('')}
+    </div>
+    <div class="card">
+      <div class="aide-h3">🌡️ Paramètres & Constantes</div>
+      ${params.map(([l,v])=>`<div class="param-r"><div class="pl">${l}</div><div class="pv">${v}</div></div>`).join('')}
+    </div>
+    <div class="card">
+      <div class="aide-h3">⚠️ Alertes à surveiller</div>
+      ${[['Température > 39°C','Danger mortel. Ouvrir immédiatement la couveuse.'],
+         ['Humidité < 45%','Ajouter de l\'eau immédiatement.'],
+         ['Œuf avec odeur forte','Retirer immédiatement : risque d\'explosion.'],
+         ['Coupure de courant > 4h','Possible mortalité embryonnaire. Notez la durée.'],
+      ].map(([t,p])=>`<div class="step-row">
+        <div class="step-n warn">!</div>
+        <div class="step-c"><strong>${t}</strong><p>${p}</p></div></div>`).join('')}
+    </div>`;
+}
+
+window.updCk=()=>{
+  const items=document.querySelectorAll('[id^="ck"]');
+  let done=0;
+  items.forEach((cb,i)=>{
+    const ci=document.getElementById('ci'+i);
+    cb.checked?(done++,ci?.classList.add('done')):ci?.classList.remove('done');
+  });
+  const p=Math.round(done/items.length*100);
+  $('cb-fill').style.width=p+'%';
+  $('cb-lbl').textContent=`${done} / ${items.length} étapes`;
+};
+</script>
+</body>
+</html>
