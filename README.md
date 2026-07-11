@@ -1,4 +1,4 @@
-# 🐣 CouvaisonPro — Tableau de bord aviculteur
+# 🐣 Tico farm Manager — Tableau de bord aviculteur
 
 Application web autonome (PWA) pour suivre la couvaison de vos œufs de poules, du ramassage à l'éclosion. **Un seul fichier HTML** — fonctionne entièrement dans le navigateur, sans serveur ni base de données.
 
