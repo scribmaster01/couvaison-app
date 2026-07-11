@@ -1,0 +1,3091 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#10b981" />
+<meta name="description" content="Tableau de bord d'aviculteur : suivi complet de la couvaison des œufs de poules, mirages, éclosion, KPIs, calendrier, coûts et statistiques." />
+<title>🐣 CouvaisonPro — Tableau de bord aviculteur</title>
+
+<!-- PWA Manifest inline (data URI) -->
+<link rel="manifest" href='data:application/manifest+json;charset=utf-8,{"name":"CouvaisonPro","short_name":"CouvaisonPro","description":"Suivi de couvaison des œufs de poules","start_url":".","display":"standalone","background_color":"%23f0fdf4","theme_color":"%2310b981","icons":[{"src":"data:image/svg%2bxml;utf8,%3Csvg xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22 viewBox%3D%220 0 100 100%22%3E%3Crect width%3D%22100%22 height%3D%22100%22 rx%3D%2220%22 fill%3D%22%2310b981%22%2F%3E%3Ctext x%3D%2250%22 y%3D%2270%22 text-anchor%3D%22middle%22 font-size%3D%2260%22%3E%F0%9F%90%A3%3C%2Ftext%3E%3C%2Fsvg%3E","sizes":"192x192","type":"image/svg%2bxml","purpose":"any"}]}' />
+
+<!-- Apple touch icon -->
+<link rel="apple-touch-icon" href='data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="20" fill="%2310b981"/><text x="50" y="70" text-anchor="middle" font-size="60">🐣</text></svg>' />
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet" />
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+<style>
+/* ============================================================
+   DESIGN SYSTEM
+   ============================================================ */
+:root {
+  /* Couleurs principales - palette verte avicole moderne */
+  --primary-50:  #ecfdf5;
+  --primary-100: #d1fae5;
+  --primary-200: #a7f3d0;
+  --primary-300: #6ee7b7;
+  --primary-400: #34d399;
+  --primary-500: #10b981;
+  --primary-600: #059669;
+  --primary-700: #047857;
+  --primary-800: #065f46;
+  --primary-900: #064e3b;
+
+  --accent-amber: #f59e0b;
+  --accent-rose:  #f43f5e;
+  --accent-sky:   #0ea5e9;
+  --accent-violet:#8b5cf6;
+  --accent-egg:   #fef3c7;
+
+  --gray-50:  #f8fafc;
+  --gray-100: #f1f5f9;
+  --gray-200: #e2e8f0;
+  --gray-300: #cbd5e1;
+  --gray-400: #94a3b8;
+  --gray-500: #64748b;
+  --gray-600: #475569;
+  --gray-700: #334155;
+  --gray-800: #1e293b;
+  --gray-900: #0f172a;
+
+  --bg:        #f6f9f7;
+  --bg-card:   #ffffff;
+  --bg-soft:   #f0fdf4;
+
+  --text:      #0f172a;
+  --text-soft: #475569;
+  --text-mute: #94a3b8;
+
+  --shadow-xs: 0 1px 2px rgba(15,23,42,.05);
+  --shadow-sm: 0 1px 3px rgba(15,23,42,.08), 0 1px 2px rgba(15,23,42,.04);
+  --shadow-md: 0 4px 6px -1px rgba(15,23,42,.08), 0 2px 4px -2px rgba(15,23,42,.04);
+  --shadow-lg: 0 10px 25px -5px rgba(15,23,42,.10), 0 8px 10px -6px rgba(15,23,42,.06);
+  --shadow-xl: 0 20px 40px -10px rgba(15,23,42,.18);
+  --shadow-glow: 0 0 0 4px rgba(16,185,129,.18);
+
+  --radius-sm: 8px;
+  --radius:    12px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+
+  --transition: 220ms cubic-bezier(.22,.61,.36,1);
+
+  /* Sidebar */
+  --sidebar-w: 264px;
+}
+
+[data-theme="dark"] {
+  --bg:        #0b1411;
+  --bg-card:   #111c18;
+  --bg-soft:   #0f1a16;
+  --text:      #e2e8f0;
+  --text-soft: #94a3b8;
+  --text-mute: #64748b;
+  --gray-50:  #0f1a16;
+  --gray-100: #14231d;
+  --gray-200: #1c2d26;
+  --gray-300: #2a3e35;
+  --gray-700: #cbd5e1;
+  --gray-800: #e2e8f0;
+  --gray-900: #f1f5f9;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,.35);
+  --shadow-md: 0 4px 6px -1px rgba(0,0,0,.4), 0 2px 4px -2px rgba(0,0,0,.3);
+  --shadow-lg: 0 10px 25px -5px rgba(0,0,0,.45), 0 8px 10px -6px rgba(0,0,0,.3);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+h1, h2, h3, h4, h5 { font-family: 'Plus Jakarta Sans', 'Inter', sans-serif; font-weight: 700; letter-spacing: -0.02em; }
+button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+input, select, textarea { font-family: inherit; color: inherit; }
+a { color: var(--primary-600); text-decoration: none; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 5px; border: 2px solid var(--bg); }
+::-webkit-scrollbar-thumb:hover { background: var(--gray-400); }
+
+/* ============================================================
+   AUTH SCREEN
+   ============================================================ */
+.auth-wrap {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(16,185,129,.18), transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(245,158,11,.15), transparent 50%),
+    linear-gradient(135deg, var(--bg) 0%, var(--bg-soft) 100%);
+  position: relative;
+  overflow: hidden;
+}
+.auth-wrap::before {
+  content: '🐣';
+  position: absolute;
+  font-size: 380px;
+  opacity: 0.04;
+  top: -60px;
+  right: -60px;
+  transform: rotate(-15deg);
+  pointer-events: none;
+}
+.auth-wrap::after {
+  content: '🥚';
+  position: absolute;
+  font-size: 280px;
+  opacity: 0.05;
+  bottom: -80px;
+  left: -50px;
+  transform: rotate(15deg);
+  pointer-events: none;
+}
+.auth-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-xl);
+  padding: 40px 36px;
+  width: 100%;
+  max-width: 440px;
+  position: relative;
+  z-index: 1;
+  border: 1px solid var(--gray-200);
+  animation: authIn .6s var(--transition);
+}
+@keyframes authIn {
+  from { opacity: 0; transform: translateY(20px) scale(.97); }
+  to   { opacity: 1; transform: none; }
+}
+.auth-logo {
+  width: 76px; height: 76px;
+  border-radius: 22px;
+  background: linear-gradient(135deg, var(--primary-400), var(--primary-600));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 40px;
+  margin: 0 auto 18px;
+  box-shadow: 0 12px 24px -8px rgba(16,185,129,.55);
+  animation: bounce 2.5s ease-in-out infinite;
+}
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+.auth-card h1 {
+  text-align: center;
+  font-size: 26px;
+  margin-bottom: 6px;
+  background: linear-gradient(135deg, var(--primary-700), var(--primary-500));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.auth-card .subtitle { text-align: center; color: var(--text-soft); margin-bottom: 28px; font-size: 14px; }
+.auth-tabs { display: flex; gap: 4px; background: var(--gray-100); padding: 4px; border-radius: var(--radius); margin-bottom: 24px; }
+.auth-tabs button {
+  flex: 1; padding: 10px; border-radius: 8px;
+  font-weight: 600; color: var(--text-soft); font-size: 13px;
+  transition: all var(--transition);
+}
+.auth-tabs button.active {
+  background: var(--bg-card);
+  color: var(--primary-700);
+  box-shadow: var(--shadow-sm);
+}
+.auth-form { display: flex; flex-direction: column; gap: 14px; }
+.auth-form .field label { display: block; font-size: 12px; font-weight: 600; color: var(--text-soft); margin-bottom: 6px; }
+.auth-form input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1.5px solid var(--gray-200);
+  border-radius: var(--radius);
+  background: var(--bg);
+  font-size: 14px;
+  transition: all var(--transition);
+}
+.auth-form input:focus {
+  outline: none;
+  border-color: var(--primary-500);
+  box-shadow: var(--shadow-glow);
+  background: var(--bg-card);
+}
+.auth-info {
+  margin-top: 20px;
+  padding: 12px 14px;
+  background: var(--primary-50);
+  color: var(--primary-800);
+  border-radius: var(--radius);
+  font-size: 12px;
+  border-left: 3px solid var(--primary-500);
+  line-height: 1.5;
+}
+[data-theme="dark"] .auth-info { background: rgba(16,185,129,.12); color: var(--primary-200); }
+.auth-info b { font-weight: 700; }
+
+/* ============================================================
+   BUTTONS
+   ============================================================ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: var(--radius);
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.01em;
+  transition: all var(--transition);
+  position: relative;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.btn:hover { transform: translateY(-1px); }
+.btn:active { transform: translateY(0); }
+.btn-primary {
+  background: linear-gradient(135deg, var(--primary-500), var(--primary-600));
+  color: white;
+  box-shadow: 0 4px 12px -3px rgba(16,185,129,.5);
+}
+.btn-primary:hover { box-shadow: 0 8px 20px -4px rgba(16,185,129,.6); }
+.btn-ghost { background: var(--gray-100); color: var(--text); }
+.btn-ghost:hover { background: var(--gray-200); }
+.btn-danger { background: linear-gradient(135deg, #fb7185, #e11d48); color: white; box-shadow: 0 4px 12px -3px rgba(225,29,72,.4); }
+.btn-soft { background: var(--primary-50); color: var(--primary-700); }
+.btn-soft:hover { background: var(--primary-100); }
+.btn-icon { padding: 8px; min-width: 36px; }
+.btn-sm { padding: 6px 12px; font-size: 12px; }
+.btn-lg { padding: 14px 24px; font-size: 15px; }
+.btn-block { width: 100%; }
+
+/* ============================================================
+   APP LAYOUT
+   ============================================================ */
+.app {
+  display: grid;
+  grid-template-columns: var(--sidebar-w) 1fr;
+  min-height: 100vh;
+}
+
+/* Sidebar */
+.sidebar {
+  background: var(--bg-card);
+  border-right: 1px solid var(--gray-200);
+  padding: 20px 14px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  z-index: 50;
+  transition: transform var(--transition);
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 10px 18px;
+  border-bottom: 1px dashed var(--gray-200);
+  margin-bottom: 14px;
+}
+.brand-logo {
+  width: 42px; height: 42px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--primary-400), var(--primary-600));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px;
+  box-shadow: 0 6px 16px -4px rgba(16,185,129,.5);
+}
+.brand-text { line-height: 1.1; }
+.brand-text h1 { font-size: 16px; font-weight: 800; }
+.brand-text span { font-size: 11px; color: var(--text-mute); font-weight: 500; }
+
+.nav { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-weight: 500;
+  font-size: 13.5px;
+  color: var(--text-soft);
+  transition: all var(--transition);
+  width: 100%;
+  text-align: left;
+  position: relative;
+}
+.nav-item .icon { font-size: 17px; width: 20px; display: inline-flex; justify-content: center; }
+.nav-item:hover { background: var(--gray-100); color: var(--text); }
+.nav-item.active {
+  background: linear-gradient(135deg, var(--primary-500), var(--primary-600));
+  color: white;
+  box-shadow: 0 6px 16px -4px rgba(16,185,129,.5);
+}
+.nav-item.active::before {
+  content: '';
+  position: absolute;
+  left: -14px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 24px;
+  background: var(--primary-600);
+  border-radius: 0 4px 4px 0;
+}
+.nav-item .badge {
+  margin-left: auto;
+  background: var(--accent-rose);
+  color: white;
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 10px;
+  font-weight: 700;
+  animation: pulse 1.8s infinite;
+}
+.nav-item.active .badge { background: white; color: var(--accent-rose); }
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.12); }
+}
+
+.sidebar-footer { padding-top: 14px; border-top: 1px dashed var(--gray-200); }
+.user-card {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px;
+  border-radius: var(--radius);
+  background: var(--gray-100);
+  margin-bottom: 10px;
+}
+.user-avatar {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent-violet), var(--primary-500));
+  color: white;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 14px;
+}
+.user-info { flex: 1; min-width: 0; }
+.user-info .name { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.user-info .role { font-size: 11px; color: var(--text-mute); }
+
+/* Topbar + main */
+.main { display: flex; flex-direction: column; min-width: 0; }
+.topbar {
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--gray-200);
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  position: sticky; top: 0;
+  z-index: 40;
+  backdrop-filter: blur(12px);
+}
+.topbar h2 { font-size: 20px; }
+.topbar .crumb { color: var(--text-mute); font-size: 12px; font-weight: 500; }
+.topbar .grow { flex: 1; }
+.topbar-actions { display: flex; gap: 8px; align-items: center; }
+
+.icon-btn {
+  width: 38px; height: 38px;
+  border-radius: var(--radius);
+  background: var(--gray-100);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 17px;
+  transition: all var(--transition);
+  position: relative;
+}
+.icon-btn:hover { background: var(--gray-200); transform: translateY(-1px); }
+
+.content { padding: 24px; flex: 1; min-width: 0; }
+
+/* ============================================================
+   CARDS / SECTIONS
+   ============================================================ */
+.section { display: none; animation: sectionIn .35s var(--transition); }
+.section.active { display: block; }
+@keyframes sectionIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+.page-head {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  margin-bottom: 22px;
+}
+.page-head h2 { font-size: 24px; }
+.page-head .desc { color: var(--text-soft); font-size: 13px; margin-top: 2px; }
+.page-head .grow { flex: 1; }
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  transition: box-shadow var(--transition);
+}
+.card:hover { box-shadow: var(--shadow-md); }
+.card-head {
+  padding: 18px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid var(--gray-200);
+}
+.card-head h3 { font-size: 16px; }
+.card-head .desc { color: var(--text-soft); font-size: 12px; }
+.card-body { padding: 20px; }
+
+/* KPI cards */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin-bottom: 22px;
+}
+.kpi {
+  background: var(--bg-card);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  position: relative;
+  overflow: hidden;
+  transition: all var(--transition);
+}
+.kpi:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+.kpi::before {
+  content: '';
+  position: absolute;
+  top: 0; right: 0;
+  width: 110px; height: 110px;
+  border-radius: 50%;
+  opacity: 0.1;
+  transform: translate(40%, -40%);
+}
+.kpi.green::before  { background: radial-gradient(circle, var(--primary-500) 0%, transparent 70%); }
+.kpi.amber::before  { background: radial-gradient(circle, var(--accent-amber) 0%, transparent 70%); }
+.kpi.rose::before   { background: radial-gradient(circle, var(--accent-rose) 0%, transparent 70%); }
+.kpi.sky::before    { background: radial-gradient(circle, var(--accent-sky) 0%, transparent 70%); }
+.kpi.violet::before { background: radial-gradient(circle, var(--accent-violet) 0%, transparent 70%); }
+.kpi .icon-circle {
+  width: 40px; height: 40px;
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+  margin-bottom: 10px;
+}
+.kpi.green .icon-circle  { background: var(--primary-100); color: var(--primary-700); }
+.kpi.amber .icon-circle  { background: #fef3c7; color: #b45309; }
+.kpi.rose .icon-circle   { background: #ffe4e6; color: #be123c; }
+.kpi.sky .icon-circle    { background: #e0f2fe; color: #0369a1; }
+.kpi.violet .icon-circle { background: #ede9fe; color: #6d28d9; }
+[data-theme="dark"] .kpi.green .icon-circle  { background: rgba(16,185,129,.18); color: var(--primary-300); }
+[data-theme="dark"] .kpi.amber .icon-circle  { background: rgba(245,158,11,.18); color: #fbbf24; }
+[data-theme="dark"] .kpi.rose .icon-circle   { background: rgba(244,63,94,.18); color: #fb7185; }
+[data-theme="dark"] .kpi.sky .icon-circle    { background: rgba(14,165,233,.18); color: #38bdf8; }
+[data-theme="dark"] .kpi.violet .icon-circle { background: rgba(139,92,246,.18); color: #a78bfa; }
+.kpi .label { font-size: 12px; color: var(--text-soft); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+.kpi .value { font-size: 28px; font-weight: 800; margin: 4px 0 6px; font-family: 'Plus Jakarta Sans', sans-serif; }
+.kpi .delta { font-size: 12px; color: var(--text-mute); display: flex; align-items: center; gap: 4px; }
+.kpi .delta.up { color: var(--primary-600); }
+.kpi .delta.down { color: var(--accent-rose); }
+
+/* Grids */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+@media (max-width: 900px) {
+  .grid-2, .grid-3 { grid-template-columns: 1fr; }
+}
+
+/* ============================================================
+   TABLE
+   ============================================================ */
+.table-wrap {
+  overflow-x: auto;
+  border-radius: var(--radius-lg);
+}
+.table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 13px;
+}
+.table thead th {
+  background: var(--gray-100);
+  color: var(--text-soft);
+  font-weight: 700;
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 12px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--gray-200);
+  white-space: nowrap;
+  position: sticky; top: 0;
+}
+.table tbody td {
+  padding: 10px;
+  border-bottom: 1px solid var(--gray-200);
+  background: var(--bg-card);
+  vertical-align: middle;
+}
+.table tbody tr { transition: background var(--transition); }
+.table tbody tr:hover { background: var(--bg-soft); }
+.table tbody tr.row-alert { background: rgba(244,63,94,0.05); }
+.table tbody tr.row-warn  { background: rgba(245,158,11,0.05); }
+.table tbody tr.row-ok    { background: rgba(16,185,129,0.04); }
+.table .num { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+.table .calc { color: var(--primary-700); font-weight: 700; }
+.table .err { color: var(--accent-rose); }
+.table input.cell {
+  width: 70px;
+  padding: 6px 8px;
+  border: 1px solid var(--gray-200);
+  border-radius: 6px;
+  background: var(--bg);
+  font-size: 13px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  transition: all var(--transition);
+}
+.table input.cell:focus {
+  outline: none;
+  border-color: var(--primary-500);
+  box-shadow: 0 0 0 3px rgba(16,185,129,.15);
+  background: var(--bg-card);
+}
+.table input.cell:invalid { border-color: var(--accent-rose); }
+.table input.date-cell { width: 130px; text-align: center; }
+.table textarea.cell { min-height: 30px; resize: vertical; }
+.table .actions { display: flex; gap: 4px; justify-content: flex-end; }
+.table .sub-h {
+  font-size: 10px; font-weight: 600; text-transform: uppercase; color: var(--text-mute);
+  letter-spacing: 0.05em;
+  background: var(--bg-soft) !important;
+}
+.table th.sub-h { background: var(--bg-soft) !important; }
+
+/* Status badges */
+.badge-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.badge-ok    { background: var(--primary-100); color: var(--primary-800); }
+.badge-warn  { background: #fef3c7; color: #b45309; }
+.badge-bad   { background: #ffe4e6; color: #be123c; }
+.badge-info  { background: #e0f2fe; color: #075985; }
+.badge-gray  { background: var(--gray-100); color: var(--text-soft); }
+[data-theme="dark"] .badge-ok    { background: rgba(16,185,129,.18); color: var(--primary-200); }
+[data-theme="dark"] .badge-warn  { background: rgba(245,158,11,.18); color: #fcd34d; }
+[data-theme="dark"] .badge-bad   { background: rgba(244,63,94,.18); color: #fda4af; }
+[data-theme="dark"] .badge-info  { background: rgba(14,165,233,.18); color: #7dd3fc; }
+[data-theme="dark"] .badge-gray  { background: var(--gray-200); color: var(--text-soft); }
+
+/* Eclosion indicator */
+.eclosion-indicator {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-weight: 700; font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.eclosion-indicator .dot { width: 8px; height: 8px; border-radius: 50%; }
+.eclosion-indicator.today { background: linear-gradient(135deg, #fbbf24, #f59e0b); color: white; box-shadow: 0 0 0 4px rgba(245,158,11,.18); animation: glow 1.6s infinite; }
+.eclosion-indicator.today .dot { background: white; }
+.eclosion-indicator.urgent { background: #fee2e2; color: #b91c1c; }
+.eclosion-indicator.urgent .dot { background: #b91c1c; }
+.eclosion-indicator.soon { background: #fef3c7; color: #b45309; }
+.eclosion-indicator.soon .dot { background: #f59e0b; }
+.eclosion-indicator.future { background: var(--gray-100); color: var(--text-soft); }
+.eclosion-indicator.future .dot { background: var(--text-mute); }
+.eclosion-indicator.past { background: var(--primary-50); color: var(--primary-700); }
+.eclosion-indicator.past .dot { background: var(--primary-500); }
+@keyframes glow {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(245,158,11,.18); }
+  50% { box-shadow: 0 0 0 10px rgba(245,158,11,0); }
+}
+
+/* ============================================================
+   FORMS
+   ============================================================ */
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field label { font-size: 12px; font-weight: 600; color: var(--text-soft); }
+.field input, .field select, .field textarea {
+  padding: 10px 12px;
+  border: 1.5px solid var(--gray-200);
+  border-radius: var(--radius);
+  background: var(--bg);
+  font-size: 14px;
+  transition: all var(--transition);
+}
+.field input:focus, .field select:focus, .field textarea:focus {
+  outline: none;
+  border-color: var(--primary-500);
+  box-shadow: var(--shadow-glow);
+  background: var(--bg-card);
+}
+.field textarea { min-height: 70px; resize: vertical; }
+.field .hint { font-size: 11px; color: var(--text-mute); }
+.field .err { color: var(--accent-rose); font-size: 11px; font-weight: 600; }
+
+.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
+.form-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; }
+
+/* ============================================================
+   MODAL
+   ============================================================ */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(15,23,42,.55);
+  backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 100;
+  padding: 20px;
+  animation: fadeIn .2s;
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.modal {
+  background: var(--bg-card);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-xl);
+  width: 100%;
+  max-width: 720px;
+  max-height: 92vh;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  animation: modalIn .3s var(--transition);
+}
+@keyframes modalIn {
+  from { opacity: 0; transform: translateY(20px) scale(.96); }
+  to   { opacity: 1; transform: none; }
+}
+.modal-head {
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--gray-200);
+  display: flex; align-items: center; gap: 12px;
+}
+.modal-head h3 { font-size: 18px; flex: 1; }
+.modal-body { padding: 22px; overflow-y: auto; flex: 1; }
+.modal-foot {
+  padding: 14px 22px;
+  border-top: 1px solid var(--gray-200);
+  display: flex; gap: 10px; justify-content: flex-end;
+  background: var(--gray-50);
+}
+
+/* ============================================================
+   TOAST
+   ============================================================ */
+.toast-wrap {
+  position: fixed;
+  top: 20px; right: 20px;
+  z-index: 200;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.toast {
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  padding: 12px 16px;
+  display: flex; align-items: center; gap: 10px;
+  min-width: 280px;
+  border-left: 4px solid var(--primary-500);
+  animation: toastIn .3s var(--transition);
+}
+.toast.success { border-color: var(--primary-500); }
+.toast.error   { border-color: var(--accent-rose); }
+.toast.warn    { border-color: var(--accent-amber); }
+.toast.info    { border-color: var(--accent-sky); }
+.toast .icon { font-size: 18px; }
+.toast .msg  { font-size: 13px; font-weight: 500; flex: 1; }
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(40px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ============================================================
+   CALENDAR
+   ============================================================ */
+.calendar {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  background: var(--gray-200);
+  border-radius: var(--radius);
+  overflow: hidden;
+  padding: 4px;
+}
+.calendar .dow {
+  background: var(--gray-100);
+  padding: 8px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-soft);
+  letter-spacing: 0.05em;
+}
+.calendar .day {
+  background: var(--bg-card);
+  min-height: 100px;
+  padding: 6px;
+  display: flex; flex-direction: column; gap: 4px;
+  font-size: 11px;
+  position: relative;
+  transition: all var(--transition);
+  cursor: pointer;
+}
+.calendar .day:hover { background: var(--bg-soft); transform: scale(1.01); }
+.calendar .day.out { opacity: 0.35; }
+.calendar .day.today { background: linear-gradient(135deg, var(--primary-50), var(--primary-100)); border: 2px solid var(--primary-500); }
+.calendar .day .num { font-weight: 700; font-size: 12px; color: var(--text-soft); }
+.calendar .day.today .num { color: var(--primary-700); }
+.calendar .event {
+  background: var(--primary-500);
+  color: white;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.calendar .event.j7  { background: var(--accent-amber); }
+.calendar .event.j14 { background: var(--accent-violet); }
+.calendar .event.hatch { background: var(--primary-600); animation: pulse 2s infinite; }
+.calendar .event.collect { background: var(--accent-sky); }
+
+/* ============================================================
+   CHART CONTAINERS
+   ============================================================ */
+.chart-box {
+  position: relative;
+  width: 100%;
+  height: 300px;
+}
+.chart-box.tall { height: 380px; }
+
+/* ============================================================
+   ALERTS PANEL
+   ============================================================ */
+.alert-list { display: flex; flex-direction: column; gap: 10px; }
+.alert-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  border-left: 4px solid;
+  background: var(--gray-50);
+  animation: slideIn .3s var(--transition);
+}
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-10px); }
+  to   { opacity: 1; transform: none; }
+}
+.alert-item.danger  { border-color: var(--accent-rose); background: #fef2f2; color: #881337; }
+.alert-item.warning { border-color: var(--accent-amber); background: #fffbeb; color: #78350f; }
+.alert-item.info    { border-color: var(--accent-sky); background: #f0f9ff; color: #075985; }
+.alert-item.success { border-color: var(--primary-500); background: var(--primary-50); color: var(--primary-800); }
+.alert-item .icon { font-size: 18px; }
+.alert-item .msg { flex: 1; font-size: 13px; font-weight: 500; }
+.alert-item .time { font-size: 11px; opacity: 0.7; }
+[data-theme="dark"] .alert-item.danger  { background: rgba(244,63,94,.1);  color: #fda4af; }
+[data-theme="dark"] .alert-item.warning { background: rgba(245,158,11,.1); color: #fcd34d; }
+[data-theme="dark"] .alert-item.info    { background: rgba(14,165,233,.1); color: #7dd3fc; }
+[data-theme="dark"] .alert-item.success { background: rgba(16,185,129,.1); color: var(--primary-200); }
+
+/* ============================================================
+   GUIDE / AIDE
+   ============================================================ */
+.guide-timeline { position: relative; padding-left: 32px; }
+.guide-timeline::before {
+  content: '';
+  position: absolute;
+  left: 14px; top: 0; bottom: 0;
+  width: 2px;
+  background: linear-gradient(to bottom, var(--primary-500), var(--accent-amber));
+  border-radius: 2px;
+}
+.guide-step {
+  position: relative;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius);
+  transition: all var(--transition);
+}
+.guide-step:hover { transform: translateX(4px); box-shadow: var(--shadow-md); }
+.guide-step::before {
+  content: '';
+  position: absolute;
+  left: -25px; top: 18px;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--bg-card);
+  border: 3px solid var(--primary-500);
+  box-shadow: 0 0 0 3px var(--bg);
+}
+.guide-step.j-critical::before { background: var(--accent-rose); border-color: var(--accent-rose); }
+.guide-step.j-mirage::before { background: var(--accent-amber); border-color: var(--accent-amber); }
+.guide-step.j-hatch::before { background: var(--primary-500); border-color: var(--primary-500); }
+.guide-step .day { font-size: 11px; font-weight: 700; color: var(--primary-600); text-transform: uppercase; letter-spacing: 0.06em; }
+.guide-step h4 { font-size: 14px; margin: 4px 0 6px; }
+.guide-step p { font-size: 13px; color: var(--text-soft); line-height: 1.55; }
+
+/* ============================================================
+   HELPERS
+   ============================================================ */
+.empty {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-soft);
+}
+.empty .emoji { font-size: 56px; margin-bottom: 14px; display: block; }
+.empty h4 { font-size: 16px; margin-bottom: 6px; color: var(--text); }
+.empty p { font-size: 13px; max-width: 380px; margin: 0 auto 16px; }
+
+.text-mute { color: var(--text-mute); }
+.text-soft { color: var(--text-soft); }
+.text-success { color: var(--primary-600); }
+.text-danger  { color: var(--accent-rose); }
+.text-warn    { color: var(--accent-amber); }
+.text-info    { color: var(--accent-sky); }
+
+.flex { display: flex; }
+.gap-2 { gap: 8px; }
+.gap-3 { gap: 12px; }
+.gap-4 { gap: 16px; }
+.items-center { align-items: center; }
+.justify-between { justify-content: space-between; }
+.flex-1 { flex: 1; }
+.mt-3 { margin-top: 12px; }
+.mt-4 { margin-top: 16px; }
+.mb-2 { margin-bottom: 8px; }
+.mb-3 { margin-bottom: 12px; }
+.mb-4 { margin-bottom: 16px; }
+.fw-700 { font-weight: 700; }
+.fw-600 { font-weight: 600; }
+.fs-12 { font-size: 12px; }
+.fs-13 { font-size: 13px; }
+.fs-14 { font-size: 14px; }
+.fs-16 { font-size: 16px; }
+.fs-20 { font-size: 20px; }
+
+/* Stats */
+.stats-row { display: flex; gap: 16px; flex-wrap: wrap; }
+.stat-pill {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px;
+  background: var(--gray-50);
+  border: 1px solid var(--gray-200);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.stat-pill strong { font-size: 14px; }
+
+/* Filter row */
+.filter-bar {
+  display: flex; gap: 10px; flex-wrap: wrap;
+  margin-bottom: 16px;
+  padding: 12px;
+  background: var(--gray-50);
+  border-radius: var(--radius);
+  align-items: center;
+}
+.filter-bar select, .filter-bar input {
+  padding: 8px 10px;
+  border: 1.5px solid var(--gray-200);
+  border-radius: 8px;
+  background: var(--bg-card);
+  font-size: 13px;
+}
+.filter-bar .grow { flex: 1; min-width: 150px; }
+
+/* Side panel for lot detail */
+.lot-detail-panel {
+  position: fixed;
+  top: 0; right: 0; bottom: 0;
+  width: 480px;
+  max-width: 95vw;
+  background: var(--bg-card);
+  border-left: 1px solid var(--gray-200);
+  box-shadow: -10px 0 30px -10px rgba(15,23,42,.18);
+  z-index: 90;
+  overflow-y: auto;
+  transform: translateX(100%);
+  transition: transform .35s var(--transition);
+}
+.lot-detail-panel.open { transform: translateX(0); }
+.lot-detail-head {
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--gray-200);
+  display: flex; align-items: center; gap: 12px;
+  position: sticky; top: 0;
+  background: var(--bg-card);
+  z-index: 1;
+}
+.lot-detail-body { padding: 22px; }
+
+/* Mobile */
+.mobile-toggle { display: none; }
+@media (max-width: 900px) {
+  .app { grid-template-columns: 1fr; }
+  .sidebar {
+    position: fixed; left: 0; top: 0; bottom: 0;
+    transform: translateX(-100%);
+    box-shadow: var(--shadow-xl);
+  }
+  .sidebar.open { transform: translateX(0); }
+  .mobile-toggle { display: inline-flex; }
+  .content { padding: 16px; }
+  .topbar { padding: 12px 16px; }
+  .kpi .value { font-size: 22px; }
+  .table input.cell { width: 56px; padding: 4px 6px; font-size: 12px; }
+}
+
+/* Print */
+@media print {
+  .sidebar, .topbar, .toast-wrap, .form-actions, .icon-btn { display: none !important; }
+  .content { padding: 0; }
+  .card { box-shadow: none; border: 1px solid #ddd; }
+}
+
+/* Tabs (in-page) */
+.tabs {
+  display: flex; gap: 4px;
+  border-bottom: 1px solid var(--gray-200);
+  margin-bottom: 16px;
+  overflow-x: auto;
+}
+.tabs button {
+  padding: 10px 16px;
+  font-size: 13px; font-weight: 600;
+  color: var(--text-soft);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  white-space: nowrap;
+  transition: all var(--transition);
+}
+.tabs button:hover { color: var(--text); }
+.tabs button.active { color: var(--primary-600); border-color: var(--primary-500); }
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     AUTH SCREEN
+     ============================================================ -->
+<div id="authScreen" class="auth-wrap">
+  <div class="auth-card">
+    <div class="auth-logo">🐣</div>
+    <h1>CouvaisonPro</h1>
+    <p class="subtitle">Votre tableau de bord d'aviculteur</p>
+
+    <div class="auth-tabs">
+      <button id="tabLogin" class="active" onclick="switchAuth('login')">Connexion</button>
+      <button id="tabSignup" onclick="switchAuth('signup')">Créer un compte</button>
+    </div>
+
+    <form id="authForm" class="auth-form" onsubmit="handleAuth(event)">
+      <div class="field">
+        <label>Nom d'utilisateur</label>
+        <input type="text" id="authUser" required minlength="3" autocomplete="username" placeholder="ex: ferme-leroy" />
+      </div>
+      <div class="field" id="nameField" style="display:none">
+        <label>Votre prénom (optionnel)</label>
+        <input type="text" id="authName" placeholder="ex: Marc" />
+      </div>
+      <div class="field">
+        <label>Mot de passe</label>
+        <input type="password" id="authPass" required minlength="4" autocomplete="current-password" placeholder="••••••••" />
+      </div>
+      <button type="submit" class="btn btn-primary btn-lg btn-block" id="authSubmit">Se connecter</button>
+    </form>
+
+    <div class="auth-info">
+      <b>🔒 Confidentialité :</b> toutes vos données restent sur cet appareil (localStorage). Chaque utilisateur a son propre espace. Vous pouvez créer et supprimer vos lots librement.
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     MAIN APP
+     ============================================================ -->
+<div id="app" class="app" style="display:none">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-logo">🐣</div>
+      <div class="brand-text">
+        <h1>CouvaisonPro</h1>
+        <span>Tableau de bord aviculteur</span>
+      </div>
+    </div>
+
+    <nav class="nav">
+      <button class="nav-item active" data-section="lots" onclick="navigate('lots', this)">
+        <span class="icon">📋</span> Suivi des lots
+      </button>
+      <button class="nav-item" data-section="dashboard" onclick="navigate('dashboard', this)">
+        <span class="icon">📊</span> Tableau de bord
+      </button>
+      <button class="nav-item" data-section="incubators" onclick="navigate('incubators', this)">
+        <span class="icon">🌡️</span> Incubateurs
+      </button>
+      <button class="nav-item" data-section="calendar" onclick="navigate('calendar', this)">
+        <span class="icon">📅</span> Calendrier
+      </button>
+      <button class="nav-item" data-section="costs" onclick="navigate('costs', this)">
+        <span class="icon">💰</span> Coûts
+      </button>
+      <button class="nav-item" data-section="clients" onclick="navigate('clients', this)">
+        <span class="icon">👥</span> Clients
+      </button>
+      <button class="nav-item" data-section="stats" onclick="navigate('stats', this)">
+        <span class="icon">🏆</span> Statistiques
+      </button>
+      <button class="nav-item" data-section="guide" onclick="navigate('guide', this)">
+        <span class="icon">📖</span> Guide de couvaison
+      </button>
+      <button class="nav-item" data-section="settings" onclick="navigate('settings', this)">
+        <span class="icon">⚙️</span> Paramètres
+      </button>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="user-card">
+        <div class="user-avatar" id="userAvatar">M</div>
+        <div class="user-info">
+          <div class="name" id="userName">—</div>
+          <div class="role">Aviculteur</div>
+        </div>
+      </div>
+      <button class="btn btn-ghost btn-block" onclick="logout()">🚪 Déconnexion</button>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main">
+    <!-- TOPBAR -->
+    <header class="topbar">
+      <button class="icon-btn mobile-toggle" onclick="document.getElementById('sidebar').classList.toggle('open')" title="Menu">☰</button>
+      <div>
+        <div class="crumb" id="topCrumb">Aviculteur</div>
+        <h2 id="topTitle">Suivi des lots</h2>
+      </div>
+      <div class="grow"></div>
+      <div class="topbar-actions">
+        <button class="icon-btn" onclick="toggleTheme()" title="Thème clair/sombre" id="themeBtn">🌙</button>
+        <button class="icon-btn" onclick="exportData()" title="Exporter mes données">💾</button>
+        <button class="icon-btn" onclick="document.getElementById('importFile').click()" title="Importer">📂</button>
+        <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)" />
+        <button class="btn btn-primary" onclick="openLotModal()">＋ Nouveau lot</button>
+      </div>
+    </header>
+
+    <main class="content">
+
+      <!-- ========== LOTS SECTION ========== -->
+      <section class="section active" id="sec-lots">
+        <div class="page-head">
+          <div>
+            <h2>Suivi des lots</h2>
+            <div class="desc">Saisissez les informations, les calculs se font automatiquement.</div>
+          </div>
+          <div class="grow"></div>
+          <div class="stats-row" id="lotsStats"></div>
+        </div>
+
+        <!-- Alerts panel -->
+        <div class="card mb-4" id="alertsCard" style="display:none">
+          <div class="card-head">
+            <h3>🚨 Alertes & rappels</h3>
+            <span class="badge-status badge-info" id="alertsCount">0</span>
+          </div>
+          <div class="card-body">
+            <div class="alert-list" id="alertsList"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h3>📋 Mes lots d'incubation</h3>
+            <span class="grow"></span>
+            <div class="filter-bar" style="padding:0; background:transparent; margin:0">
+              <input type="text" id="filterLot" placeholder="🔍 Rechercher..." oninput="renderLots()" style="padding:6px 10px; font-size:12px" />
+              <select id="filterIncub" onchange="renderLots()" style="padding:6px 10px; font-size:12px">
+                <option value="">Toutes couveuses</option>
+              </select>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table class="table" id="lotsTable">
+              <thead>
+                <tr>
+                  <th rowspan="2">N° Lot</th>
+                  <th rowspan="2">Couveuse</th>
+                  <th rowspan="2">Collecte</th>
+                  <th rowspan="2">Quantité</th>
+                  <th colspan="2" class="sub-h">État</th>
+                  <th rowspan="2">Incubation</th>
+                  <th rowspan="2">Bon à intro.</th>
+                  <th colspan="3" class="sub-h">Mirage J7</th>
+                  <th rowspan="2">Fécondés J7</th>
+                  <th colspan="3" class="sub-h">Mirage J14</th>
+                  <th rowspan="2">Bons J14</th>
+                  <th colspan="2" class="sub-h">Éclosion</th>
+                  <th rowspan="2">Résultat</th>
+                  <th rowspan="2">Taux</th>
+                  <th rowspan="2">Éclosion prévue</th>
+                  <th rowspan="2">Reproducteur</th>
+                  <th rowspan="2">Notes</th>
+                  <th rowspan="2">⚙️</th>
+                </tr>
+                <tr>
+                  <th class="sub-h">Fissuré</th>
+                  <th class="sub-h">Bon</th>
+                  <th class="sub-h">Clairs</th>
+                  <th class="sub-h">Mort.</th>
+                  <th class="sub-h">Fécondés</th>
+                  <th class="sub-h">Contam.</th>
+                  <th class="sub-h">Mort.</th>
+                  <th class="sub-h">Bons</th>
+                  <th class="sub-h">Malform.</th>
+                  <th class="sub-h">Mort-nés</th>
+                </tr>
+              </thead>
+              <tbody id="lotsTbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========== DASHBOARD SECTION ========== -->
+      <section class="section" id="sec-dashboard">
+        <div class="page-head">
+          <div>
+            <h2>Tableau de bord</h2>
+            <div class="desc">Indicateurs clés et tendances de votre activité</div>
+          </div>
+        </div>
+
+        <div class="kpi-grid" id="kpiGrid"></div>
+
+        <div class="grid-2 mb-4">
+          <div class="card">
+            <div class="card-head">
+              <h3>📈 Taux d'éclosion par lot</h3>
+            </div>
+            <div class="card-body"><div class="chart-box"><canvas id="chartHatchRate"></canvas></div></div>
+          </div>
+          <div class="card">
+            <div class="card-head">
+              <h3>🥚 Pertes à chaque étape</h3>
+            </div>
+            <div class="card-body"><div class="chart-box"><canvas id="chartLosses"></canvas></div></div>
+          </div>
+        </div>
+
+        <div class="grid-2 mb-4">
+          <div class="card">
+            <div class="card-head">
+              <h3>📊 Répartition par couveuse</h3>
+            </div>
+            <div class="card-body"><div class="chart-box"><canvas id="chartByIncub"></canvas></div></div>
+          </div>
+          <div class="card">
+            <div class="card-head">
+              <h3>📅 Évolution temporelle</h3>
+            </div>
+            <div class="card-body"><div class="chart-box"><canvas id="chartTime"></canvas></div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========== INCUBATORS SECTION ========== -->
+      <section class="section" id="sec-incubators">
+        <div class="page-head">
+          <div>
+            <h2>Incubateurs & environnement</h2>
+            <div class="desc">Suivi température et humidité — cause n°1 d'échec d'éclosion</div>
+          </div>
+          <div class="grow"></div>
+          <button class="btn btn-primary" onclick="openIncubModal()">＋ Nouvelle mesure</button>
+        </div>
+
+        <div class="card mb-4">
+          <div class="card-head">
+            <h3>🌡️ T° & humidité</h3>
+            <span class="grow"></span>
+            <select id="incubFilter" onchange="renderIncubChart()" style="padding:6px 10px; font-size:12px; border-radius:8px; border:1.5px solid var(--gray-200)">
+              <option value="">Toutes couveuses</option>
+            </select>
+          </div>
+          <div class="card-body"><div class="chart-box tall"><canvas id="chartIncubEnv"></canvas></div></div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h3>📝 Relevés quotidiens</h3>
+            <span class="grow"></span>
+            <input type="text" id="incubSearch" placeholder="🔍" oninput="renderIncubTable()" style="padding:6px 10px; font-size:12px; border-radius:8px; border:1.5px solid var(--gray-200)" />
+          </div>
+          <div class="table-wrap">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Couveuse</th>
+                  <th>Température (°C)</th>
+                  <th>Humidité (%)</th>
+                  <th>Statut</th>
+                  <th>⚙️</th>
+                </tr>
+              </thead>
+              <tbody id="incubTbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========== CALENDAR SECTION ========== -->
+      <section class="section" id="sec-calendar">
+        <div class="page-head">
+          <div>
+            <h2>Vue calendrier</h2>
+            <div class="desc">Tous vos lots en cours d'un coup d'œil</div>
+          </div>
+          <div class="grow"></div>
+          <div class="flex gap-2 items-center">
+            <button class="btn btn-ghost btn-sm" onclick="calNav(-1)">‹</button>
+            <strong id="calTitle" style="min-width:160px; text-align:center">—</strong>
+            <button class="btn btn-ghost btn-sm" onclick="calNav(1)">›</button>
+            <button class="btn btn-soft btn-sm" onclick="calNav(0)">Aujourd'hui</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-body">
+            <div class="flex gap-3 mb-3" style="flex-wrap:wrap">
+              <span class="stat-pill"><span style="width:10px; height:10px; background:var(--accent-sky); border-radius:50%"></span> Collecte</span>
+              <span class="stat-pill"><span style="width:10px; height:10px; background:var(--primary-500); border-radius:50%"></span> Entrée incubation</span>
+              <span class="stat-pill"><span style="width:10px; height:10px; background:var(--accent-amber); border-radius:50%"></span> Mirage J7</span>
+              <span class="stat-pill"><span style="width:10px; height:10px; background:var(--accent-violet); border-radius:50%"></span> Mirage J14</span>
+              <span class="stat-pill"><span style="width:10px; height:10px; background:var(--primary-600); border-radius:50%"></span> Éclosion 🐣</span>
+            </div>
+            <div class="calendar" id="calGrid"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========== COSTS SECTION ========== -->
+      <section class="section" id="sec-costs">
+        <div class="page-head">
+          <div>
+            <h2>Coûts de production</h2>
+            <div class="desc">Coût par poussin — œufs + énergie + aliment + main d'œuvre</div>
+          </div>
+          <div class="grow"></div>
+          <button class="btn btn-primary" onclick="openCostModal()">＋ Nouveau coût</button>
+        </div>
+
+        <div class="kpi-grid" id="costKpi"></div>
+
+        <div class="card">
+          <div class="card-head">
+            <h3>💸 Coût par lot</h3>
+          </div>
+          <div class="table-wrap">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Lot</th>
+                  <th>Poussins</th>
+                  <th>Œufs</th>
+                  <th>Énergie</th>
+                  <th>Aliment</th>
+                  <th>Main d'œuvre</th>
+                  <th>Total</th>
+                  <th>Coût / poussin</th>
+                  <th>⚙️</th>
+                </tr>
+              </thead>
+              <tbody id="costsTbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========== CLIENTS SECTION ========== -->
+      <section class="section" id="sec-clients">
+        <div class="page-head">
+          <div>
+            <h2>Module clients</h2>
+            <div class="desc">Commandes de poussins — réservé, payé, livré</div>
+          </div>
+          <div class="grow"></div>
+          <button class="btn btn-primary" onclick="openClientModal()">＋ Nouveau client</button>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h3>👥 Mes clients</h3>
+          </div>
+          <div class="table-wrap">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Client</th>
+                  <th>Contact</th>
+                  <th>Lot associé</th>
+                  <th>Qté commandée</th>
+                  <th>Prix unitaire</th>
+                  <th>Total</th>
+                  <th>Statut</th>
+                  <th>Date livraison</th>
+                  <th>⚙️</th>
+                </tr>
+              </thead>
+              <tbody id="clientsTbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========== STATS SECTION ========== -->
+      <section class="section" id="sec-stats">
+        <div class="page-head">
+          <div>
+            <h2>Statistiques avancées</h2>
+            <div class="desc">Performance par couveuse et par reproducteur</div>
+          </div>
+        </div>
+
+        <div class="grid-2 mb-4">
+          <div class="card">
+            <div class="card-head">
+              <h3>🏆 Performance par couveuse</h3>
+            </div>
+            <div class="card-body"><div class="chart-box"><canvas id="chartIncubPerf"></canvas></div></div>
+          </div>
+          <div class="card">
+            <div class="card-head">
+              <h3>🐔 Performance par reproducteur</h3>
+            </div>
+            <div class="card-body"><div class="chart-box"><canvas id="chartBreederPerf"></canvas></div></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h3>📊 Tableau récapitulatif</h3>
+          </div>
+          <div class="table-wrap">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Entité</th>
+                  <th>Lots</th>
+                  <th>Œufs traités</th>
+                  <th>Poussins éclos</th>
+                  <th>Taux d'éclosion</th>
+                  <th>Statut</th>
+                </tr>
+              </thead>
+              <tbody id="statsTbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========== GUIDE SECTION ========== -->
+      <section class="section" id="sec-guide">
+        <div class="page-head">
+          <div>
+            <h2>Guide de couvaison J0 → J21</h2>
+            <div class="desc">Calendrier complet et bonnes pratiques</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-body">
+            <div class="guide-timeline" id="guideTimeline"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========== SETTINGS SECTION ========== -->
+      <section class="section" id="sec-settings">
+        <div class="page-head">
+          <div>
+            <h2>Paramètres</h2>
+            <div class="desc">Objectifs, seuils d'alerte et préférences</div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-head"><h3>🎯 Objectifs & seuils</h3></div>
+            <div class="card-body">
+              <form class="form-grid" id="settingsForm" onsubmit="saveSettings(event)">
+                <div class="field">
+                  <label>Objectif taux d'éclosion (%)</label>
+                  <input type="number" id="setTargetHatch" min="0" max="100" step="1" />
+                  <div class="hint">Au-dessus : ✅ / En-dessous de 10% : ⚠️ / Très en-dessous : ❌</div>
+                </div>
+                <div class="field">
+                  <label>Seuil alerte mortalité (%)</label>
+                  <input type="number" id="setMortalAlert" min="0" max="100" step="1" />
+                  <div class="hint">Déclenche une alerte si dépassé</div>
+                </div>
+                <div class="field">
+                  <label>Seuil alerte perte mirage (%)</label>
+                  <input type="number" id="setMirageAlert" min="0" max="100" step="1" />
+                </div>
+                <div class="field">
+                  <label>Température cible (°C)</label>
+                  <input type="number" id="setTemp" step="0.1" />
+                </div>
+                <div class="field">
+                  <label>Humidité cible (%)</label>
+                  <input type="number" id="setHum" step="1" />
+                </div>
+                <div class="field">
+                  <label>Durée incubation (jours)</label>
+                  <input type="number" id="setDays" min="18" max="25" />
+                </div>
+                <div class="form-actions" style="grid-column:1/-1">
+                  <button type="button" class="btn btn-ghost" onclick="resetSettings()">Réinitialiser</button>
+                  <button type="submit" class="btn btn-primary">💾 Enregistrer</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><h3>📊 Données</h3></div>
+            <div class="card-body">
+              <p class="text-soft mb-3">Vos données sont stockées localement sur cet appareil. Pensez à exporter régulièrement.</p>
+              <div class="form-grid">
+                <button class="btn btn-soft" onclick="exportData()">💾 Exporter mes données (JSON)</button>
+                <button class="btn btn-soft" onclick="document.getElementById('importFile').click()">📂 Importer un fichier</button>
+                <button class="btn btn-soft" onclick="loadDemoData()">🧪 Charger des données de démo</button>
+                <button class="btn btn-danger" onclick="confirmClearData()">🗑️ Effacer toutes mes données</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<!-- ============================================================
+     LOT DETAIL PANEL
+     ============================================================ -->
+<div class="lot-detail-panel" id="lotPanel">
+  <div class="lot-detail-head">
+    <h3 id="lotPanelTitle">Détail du lot</h3>
+    <span class="grow"></span>
+    <button class="icon-btn" onclick="closeLotPanel()">✕</button>
+  </div>
+  <div class="lot-detail-body" id="lotPanelBody"></div>
+</div>
+
+<!-- ============================================================
+     LOT MODAL
+     ============================================================ -->
+<div class="modal-overlay" id="lotModal" style="display:none">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="lotModalTitle">Nouveau lot</h3>
+      <button class="icon-btn" onclick="closeLotModal()">✕</button>
+    </div>
+    <form onsubmit="saveLot(event)">
+      <div class="modal-body">
+        <input type="hidden" id="lotId" />
+        <div class="form-grid">
+          <div class="field">
+            <label>N° lot / référence *</label>
+            <input type="text" id="lotRef" required placeholder="ex: L-2024-001" />
+          </div>
+          <div class="field">
+            <label>N° couveuse</label>
+            <input type="text" id="lotCouveuse" list="couveuseList" placeholder="ex: Couveuse 1" />
+            <datalist id="couveuseList"></datalist>
+          </div>
+          <div class="field">
+            <label>Race / reproducteur</label>
+            <input type="text" id="lotRace" list="raceList" placeholder="ex: Isa Brown" />
+            <datalist id="raceList"></datalist>
+          </div>
+          <div class="field">
+            <label>Lot de reproducteur</label>
+            <input type="text" id="lotRepro" list="reproList" placeholder="ex: Lot A" />
+            <datalist id="reproList"></datalist>
+          </div>
+          <div class="field">
+            <label>Date de collecte *</label>
+            <input type="date" id="lotCollecte" required />
+          </div>
+          <div class="field">
+            <label>Date d'entrée en incubation *</label>
+            <input type="date" id="lotIncubation" required />
+          </div>
+          <div class="field">
+            <label>Quantité totale d'œufs *</label>
+            <input type="number" id="lotQty" required min="1" step="1" />
+          </div>
+          <div class="field">
+            <label>Date de ponte du reproducteur</label>
+            <input type="date" id="lotPonte" />
+          </div>
+        </div>
+        <div class="mt-4">
+          <h4 class="fs-14 fw-700 mb-2">État des œufs (à la collecte)</h4>
+          <div class="form-grid">
+            <div class="field">
+              <label>Fissurés</label>
+              <input type="number" id="lotFissure" min="0" step="1" value="0" />
+            </div>
+            <div class="field">
+              <label>Bons (calculé)</label>
+              <input type="text" id="lotBon" disabled value="0" />
+            </div>
+          </div>
+        </div>
+        <div class="mt-4">
+          <h4 class="fs-14 fw-700 mb-2">Mirage J7</h4>
+          <div class="form-grid">
+            <div class="field"><label>Clairs</label><input type="number" id="lotJ7Clairs" min="0" step="1" value="0" /></div>
+            <div class="field"><label>Mortalités</label><input type="number" id="lotJ7Mort" min="0" step="1" value="0" /></div>
+            <div class="field"><label>Fécondés (calculé)</label><input type="text" id="lotJ7Fec" disabled value="0" /></div>
+          </div>
+        </div>
+        <div class="mt-4">
+          <h4 class="fs-14 fw-700 mb-2">Mirage J14</h4>
+          <div class="form-grid">
+            <div class="field"><label>Contaminés</label><input type="number" id="lotJ14Cont" min="0" step="1" value="0" /></div>
+            <div class="field"><label>Mortalités</label><input type="number" id="lotJ14Mort" min="0" step="1" value="0" /></div>
+            <div class="field"><label>Bons (calculé)</label><input type="text" id="lotJ14Bon" disabled value="0" /></div>
+          </div>
+        </div>
+        <div class="mt-4">
+          <h4 class="fs-14 fw-700 mb-2">Éclosion</h4>
+          <div class="form-grid">
+            <div class="field"><label>Malformés</label><input type="number" id="lotEclMal" min="0" step="1" value="0" /></div>
+            <div class="field"><label>Mort-nés</label><input type="number" id="lotEclMort" min="0" step="1" value="0" /></div>
+            <div class="field"><label>Poussins sains (calculé)</label><input type="text" id="lotResultat" disabled value="0" /></div>
+          </div>
+        </div>
+        <div class="mt-4">
+          <h4 class="fs-14 fw-700 mb-2">Coûts de production (€)</h4>
+          <div class="form-grid">
+            <div class="field"><label>Coût œufs</label><input type="number" id="lotCoutOeufs" min="0" step="0.01" value="0" /></div>
+            <div class="field"><label>Énergie couveuse</label><input type="number" id="lotCoutEnergie" min="0" step="0.01" value="0" /></div>
+            <div class="field"><label>Aliment</label><input type="number" id="lotCoutAliment" min="0" step="0.01" value="0" /></div>
+            <div class="field"><label>Main d'œuvre</label><input type="number" id="lotCoutMO" min="0" step="0.01" value="0" /></div>
+          </div>
+        </div>
+        <div class="field mt-4">
+          <label>Notes & observations</label>
+          <textarea id="lotNotes" placeholder="ex: température a baissé nuit du J12, poussins un peu mous..."></textarea>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-ghost" onclick="closeLotModal()">Annuler</button>
+        <button type="submit" class="btn btn-primary">💾 Enregistrer</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ============================================================
+     INCUB MODAL
+     ============================================================ -->
+<div class="modal-overlay" id="incubModal" style="display:none">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-head">
+      <h3>Nouveau relevé T°/humidité</h3>
+      <button class="icon-btn" onclick="closeIncubModal()">✕</button>
+    </div>
+    <form onsubmit="saveIncubEntry(event)">
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="field"><label>Date *</label><input type="date" id="incDate" required /></div>
+          <div class="field">
+            <label>Couveuse</label>
+            <input type="text" id="incCou" list="couveuseList" placeholder="ex: Couveuse 1" />
+          </div>
+          <div class="field"><label>Température (°C) *</label><input type="number" id="incTemp" step="0.1" required /></div>
+          <div class="field"><label>Humidité (%) *</label><input type="number" id="incHum" min="0" max="100" step="1" required /></div>
+        </div>
+        <div class="field mt-3">
+          <label>Notes</label>
+          <textarea id="incNotes" placeholder="Remarques..."></textarea>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-ghost" onclick="closeIncubModal()">Annuler</button>
+        <button type="submit" class="btn btn-primary">💾 Enregistrer</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ============================================================
+     CLIENT MODAL
+     ============================================================ -->
+<div class="modal-overlay" id="clientModal" style="display:none">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-head">
+      <h3 id="clientModalTitle">Nouveau client</h3>
+      <button class="icon-btn" onclick="closeClientModal()">✕</button>
+    </div>
+    <form onsubmit="saveClient(event)">
+      <div class="modal-body">
+        <input type="hidden" id="clientId" />
+        <div class="form-grid">
+          <div class="field"><label>Nom du client *</label><input type="text" id="clName" required /></div>
+          <div class="field"><label>Téléphone</label><input type="tel" id="clPhone" /></div>
+          <div class="field"><label>Email</label><input type="email" id="clEmail" /></div>
+          <div class="field">
+            <label>Lot associé</label>
+            <select id="clLot"><option value="">—</option></select>
+          </div>
+          <div class="field"><label>Quantité commandée</label><input type="number" id="clQty" min="0" step="1" value="0" /></div>
+          <div class="field"><label>Prix unitaire (€)</label><input type="number" id="clPrice" min="0" step="0.01" value="0" /></div>
+          <div class="field">
+            <label>Statut</label>
+            <select id="clStatus">
+              <option value="reserved">Réservé</option>
+              <option value="paid">Payé</option>
+              <option value="delivered">Livré</option>
+              <option value="cancelled">Annulé</option>
+            </select>
+          </div>
+          <div class="field"><label>Date de livraison</label><input type="date" id="clDate" /></div>
+        </div>
+        <div class="field mt-3">
+          <label>Notes</label>
+          <textarea id="clNotes" placeholder="Remarques..."></textarea>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-ghost" onclick="closeClientModal()">Annuler</button>
+        <button type="submit" class="btn btn-primary">💾 Enregistrer</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ============================================================
+     COST MODAL (multi-ligne par lot)
+     ============================================================ -->
+<div class="modal-overlay" id="costModal" style="display:none">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-head">
+      <h3>Coûts de production</h3>
+      <button class="icon-btn" onclick="closeCostModal()">✕</button>
+    </div>
+    <form onsubmit="saveCost(event)">
+      <div class="modal-body">
+        <input type="hidden" id="costLotId" />
+        <div class="form-grid">
+          <div class="field">
+            <label>Lot</label>
+            <select id="costLot" onchange="loadCostForm()" required><option value="">—</option></select>
+          </div>
+          <div class="field"><label>Coût œufs (€)</label><input type="number" id="cOeufs" min="0" step="0.01" value="0" /></div>
+          <div class="field"><label>Énergie couveuse (€)</label><input type="number" id="cEnergie" min="0" step="0.01" value="0" /></div>
+          <div class="field"><label>Aliment (€)</label><input type="number" id="cAliment" min="0" step="0.01" value="0" /></div>
+          <div class="field"><label>Main d'œuvre (€)</label><input type="number" id="cMO" min="0" step="0.01" value="0" /></div>
+        </div>
+        <div class="alert-item info mt-3">
+          <span class="icon">💡</span>
+          <div class="msg">Le coût par poussin = (somme des coûts) ÷ (poussins éclos). Modifiez aussi ces valeurs depuis la fiche détaillée d'un lot.</div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-ghost" onclick="closeCostModal()">Annuler</button>
+        <button type="submit" class="btn btn-primary">💾 Enregistrer</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Toasts -->
+<div class="toast-wrap" id="toasts"></div>
+
+<script>
+/* ============================================================
+   APPLICATION STATE & STORAGE
+   ============================================================ */
+const STORE = {
+  USERS: 'couveuse_users',
+  CURRENT: 'couvease_current',
+  THEME: 'couvease_theme'
+};
+
+const DEFAULT_SETTINGS = {
+  targetHatch: 85,
+  mortalAlert: 15,
+  mirageAlert: 10,
+  tempTarget: 37.8,
+  humTarget: 55,
+  incubationDays: 21
+};
+
+let currentUser = null;
+let lots = [];
+let incubEntries = [];
+let clients = [];
+let settings = { ...DEFAULT_SETTINGS };
+
+/* Hash simple (pas cryptographique, juste pour éviter stockage en clair) */
+function hash(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) {
+    h = ((h << 5) - h) + str.charCodeAt(i);
+    h |= 0;
+  }
+  return 'h_' + Math.abs(h).toString(36) + '_' + str.length;
+}
+
+function getUsers() {
+  try { return JSON.parse(localStorage.getItem(STORE.USERS) || '{}'); } catch { return {}; }
+}
+function saveUsers(u) { localStorage.setItem(STORE.USERS, JSON.stringify(u)); }
+
+function getUserData(username) {
+  try { return JSON.parse(localStorage.getItem('couvease_data_' + username) || '{}'); }
+  catch { return {}; }
+}
+function saveUserData(username, data) {
+  localStorage.setItem('couvease_data_' + username, JSON.stringify(data));
+}
+
+function loadCurrent() {
+  const username = localStorage.getItem(STORE.CURRENT);
+  if (!username) return null;
+  const users = getUsers();
+  if (!users[username]) return null;
+  const data = getUserData(username);
+  return { username, profile: users[username], data };
+}
+
+function loadState() {
+  const cur = loadCurrent();
+  if (!cur) return false;
+  currentUser = cur.username;
+  const d = cur.data || {};
+  lots = d.lots || [];
+  incubEntries = d.incubEntries || [];
+  clients = d.clients || [];
+  settings = { ...DEFAULT_SETTINGS, ...(d.settings || {}) };
+  return true;
+}
+
+function persist() {
+  if (!currentUser) return;
+  saveUserData(currentUser, { lots, incubEntries, clients, settings });
+}
+
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+/* ============================================================
+   AUTH
+   ============================================================ */
+function switchAuth(mode) {
+  document.getElementById('tabLogin').classList.toggle('active', mode === 'login');
+  document.getElementById('tabSignup').classList.toggle('active', mode === 'signup');
+  document.getElementById('authSubmit').textContent = mode === 'login' ? 'Se connecter' : 'Créer mon compte';
+  document.getElementById('nameField').style.display = mode === 'signup' ? 'flex' : 'none';
+}
+
+function handleAuth(e) {
+  e.preventDefault();
+  const username = document.getElementById('authUser').value.trim().toLowerCase();
+  const password = document.getElementById('authPass').value;
+  const name = document.getElementById('authName').value.trim();
+  const isSignup = document.getElementById('tabSignup').classList.contains('active');
+
+  if (!/^[a-z0-9_-]{3,30}$/.test(username)) {
+    toast('Nom d\'utilisateur invalide (3-30 caractères, a-z, 0-9, _ ou -)', 'error');
+    return;
+  }
+  if (password.length < 4) {
+    toast('Mot de passe trop court (min 4)', 'error');
+    return;
+  }
+
+  const users = getUsers();
+  if (isSignup) {
+    if (users[username]) { toast('Ce nom d\'utilisateur existe déjà', 'error'); return; }
+    users[username] = { name: name || username, pass: hash(password), createdAt: Date.now() };
+    saveUsers(users);
+    toast('Compte créé avec succès ! 🎉', 'success');
+  } else {
+    if (!users[username] || users[username].pass !== hash(password)) {
+      toast('Identifiants incorrects', 'error');
+      return;
+    }
+    toast(`Bienvenue ${users[username].name} !`, 'success');
+  }
+
+  localStorage.setItem(STORE.CURRENT, username);
+  setTimeout(enterApp, 300);
+}
+
+function enterApp() {
+  loadState();
+  document.getElementById('authScreen').style.display = 'none';
+  document.getElementById('app').style.display = 'grid';
+  const profile = getUsers()[currentUser];
+  document.getElementById('userName').textContent = profile.name;
+  document.getElementById('userAvatar').textContent = (profile.name[0] || 'U').toUpperCase();
+  applyTheme(localStorage.getItem(STORE.THEME) || 'light');
+  renderAll();
+}
+
+function logout() {
+  if (!confirm('Voulez-vous vraiment vous déconnecter ?')) return;
+  localStorage.removeItem(STORE.CURRENT);
+  location.reload();
+}
+
+/* ============================================================
+   THEME
+   ============================================================ */
+function toggleTheme() {
+  const cur = document.documentElement.getAttribute('data-theme') || 'light';
+  const next = cur === 'dark' ? 'light' : 'dark';
+  applyTheme(next);
+  localStorage.setItem(STORE.THEME, next);
+}
+function applyTheme(t) {
+  document.documentElement.setAttribute('data-theme', t);
+  document.getElementById('themeBtn').textContent = t === 'dark' ? '☀️' : '🌙';
+  if (typeof Chart !== 'undefined') {
+    Chart.defaults.color = t === 'dark' ? '#94a3b8' : '#475569';
+    Chart.defaults.borderColor = t === 'dark' ? '#1c2d26' : '#e2e8f0';
+  }
+  // re-render charts to pick up new theme
+  Object.values(charts).forEach(c => c && c.update());
+}
+
+/* ============================================================
+   NAVIGATION
+   ============================================================ */
+const sectionTitles = {
+  lots: 'Suivi des lots',
+  dashboard: 'Tableau de bord',
+  incubators: 'Incubateurs & environnement',
+  calendar: 'Vue calendrier',
+  costs: 'Coûts de production',
+  clients: 'Module clients',
+  stats: 'Statistiques',
+  guide: 'Guide de couvaison',
+  settings: 'Paramètres'
+};
+
+function navigate(sec, btn) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById('sec-' + sec).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  else document.querySelector(`.nav-item[data-section="${sec}"]`)?.classList.add('active');
+  document.getElementById('topTitle').textContent = sectionTitles[sec] || '—';
+  // close mobile sidebar
+  document.getElementById('sidebar').classList.remove('open');
+  // refresh section data
+  if (sec === 'dashboard') renderDashboard();
+  if (sec === 'calendar') renderCalendar();
+  if (sec === 'incubators') renderIncubSection();
+  if (sec === 'costs') renderCosts();
+  if (sec === 'clients') renderClients();
+  if (sec === 'stats') renderStats();
+  if (sec === 'settings') renderSettings();
+  if (sec === 'guide') renderGuide();
+  if (sec === 'lots') renderLots();
+}
+
+/* ============================================================
+   CALCULATIONS
+   ============================================================ */
+function calcLot(lot) {
+  const qty = num(lot.qty);
+  const fissure = num(lot.fissure);
+  const bon = Math.max(0, qty - fissure);     // Bon à introduire
+  const j7Clairs = num(lot.j7Clairs);
+  const j7Mort = num(lot.j7Mort);
+  const fecondesJ7 = Math.max(0, bon - j7Clairs - j7Mort);
+  const j14Cont = num(lot.j14Cont);
+  const j14Mort = num(lot.j14Mort);
+  const bonsJ14 = Math.max(0, fecondesJ7 - j14Cont - j14Mort);
+  const eclMal = num(lot.eclMal);
+  const eclMort = num(lot.eclMort);
+  const resultat = Math.max(0, bonsJ14 - eclMal - eclMort);
+  return { bon, fecondesJ7, bonsJ14, resultat };
+}
+
+function num(v) { const n = parseInt(v, 10); return isNaN(n) || n < 0 ? 0 : n; }
+function numf(v) { const n = parseFloat(v); return isNaN(n) || n < 0 ? 0 : n; }
+
+function hatchRate(lot) {
+  const c = calcLot(lot);
+  if (!c.bon) return 0;
+  return (c.resultat / c.bon) * 100;
+}
+
+function getHatchDate(lot) {
+  if (!lot.incubation) return null;
+  const d = new Date(lot.incubation);
+  d.setDate(d.getDate() + (settings.incubationDays || 21));
+  return d;
+}
+
+function daysUntil(date) {
+  if (!date) return null;
+  const now = new Date(); now.setHours(0,0,0,0);
+  const d = new Date(date); d.setHours(0,0,0,0);
+  return Math.round((d - now) / (1000*60*60*24));
+}
+
+/* ============================================================
+   FORMATTING
+   ============================================================ */
+function fmtDate(d) {
+  if (!d) return '—';
+  const dt = (d instanceof Date) ? d : new Date(d);
+  if (isNaN(dt)) return '—';
+  const dd = String(dt.getDate()).padStart(2, '0');
+  const mm = String(dt.getMonth() + 1).padStart(2, '0');
+  const yy = dt.getFullYear();
+  return `${dd}/${mm}/${yy}`;
+}
+function fmtDateInput(d) {
+  if (!d) return '';
+  const dt = (d instanceof Date) ? d : new Date(d);
+  if (isNaN(dt)) return '';
+  return dt.toISOString().slice(0, 10);
+}
+function fmtNum(n, d=0) { return Number(n || 0).toLocaleString('fr-FR', { maximumFractionDigits: d }); }
+function fmtPct(n, d=1) { return Number(n || 0).toFixed(d) + ' %'; }
+function fmtEur(n) { return Number(n || 0).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' }); }
+
+/* ============================================================
+   TOAST
+   ============================================================ */
+function toast(msg, type='info', duration=3000) {
+  const wrap = document.getElementById('toasts');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  const icons = { success: '✅', error: '❌', warn: '⚠️', info: 'ℹ️' };
+  t.innerHTML = `<span class="icon">${icons[type] || 'ℹ️'}</span><span class="msg">${msg}</span>`;
+  wrap.appendChild(t);
+  setTimeout(() => { t.style.opacity = '0'; t.style.transform = 'translateX(40px)'; setTimeout(() => t.remove(), 300); }, duration);
+}
+
+/* ============================================================
+   RENDER — LOTS
+   ============================================================ */
+function renderAll() {
+  renderLots();
+  renderDashboard();
+  // populate datalists
+  populateDatalists();
+}
+
+function populateDatalists() {
+  const couveuses = [...new Set(lots.map(l => l.couveuse).filter(Boolean))];
+  const races = [...new Set(lots.map(l => l.race).filter(Boolean))];
+  const repros = [...new Set(lots.map(l => l.repro).filter(Boolean))];
+  const dl1 = document.getElementById('couveuseList');
+  const dl2 = document.getElementById('raceList');
+  const dl3 = document.getElementById('reproList');
+  const filterIncub = document.getElementById('filterIncub');
+  const incubFilter = document.getElementById('incubFilter');
+  dl1.innerHTML = couveuses.map(c => `<option value="${escAttr(c)}">`).join('');
+  dl2.innerHTML = races.map(c => `<option value="${escAttr(c)}">`).join('');
+  dl3.innerHTML = repros.map(c => `<option value="${escAttr(c)}">`).join('');
+  filterIncub.innerHTML = '<option value="">Toutes couveuses</option>' + couveuses.map(c => `<option value="${escAttr(c)}">${escHtml(c)}</option>`).join('');
+  incubFilter.innerHTML = '<option value="">Toutes couveuses</option>' + couveuses.map(c => `<option value="${escAttr(c)}">${escHtml(c)}</option>`).join('');
+  // lots select in clients
+  const clLot = document.getElementById('clLot');
+  const costLot = document.getElementById('costLot');
+  const lotOpts = '<option value="">—</option>' + lots.map(l => `<option value="${l.id}">${escHtml(l.ref || 'Lot')}</option>`).join('');
+  clLot.innerHTML = lotOpts;
+  costLot.innerHTML = lotOpts;
+}
+
+function escHtml(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
+function escAttr(s) { return escHtml(s); }
+
+function renderLots() {
+  populateDatalists();
+  const filter = (document.getElementById('filterLot')?.value || '').toLowerCase();
+  const filterInc = document.getElementById('filterIncub')?.value || '';
+  const filtered = lots.filter(l => {
+    if (filter && !(`${l.ref} ${l.couveuse} ${l.race} ${l.repro} ${l.notes}`).toLowerCase().includes(filter)) return false;
+    if (filterInc && l.couveuse !== filterInc) return false;
+    return true;
+  });
+
+  const tbody = document.getElementById('lotsTbody');
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan="22"><div class="empty"><span class="emoji">📋</span><h4>Aucun lot</h4><p>Créez votre premier lot d'incubation pour démarrer le suivi.</p><button class="btn btn-primary" onclick="openLotModal()">＋ Créer un lot</button></div></td></tr>`;
+  } else {
+    tbody.innerHTML = filtered.map(l => lotRow(l)).join('');
+  }
+  // lot stats
+  renderLotStats();
+  // alerts
+  renderAlerts();
+}
+
+function lotRow(l) {
+  const c = calcLot(l);
+  const rate = hatchRate(l);
+  const target = settings.targetHatch || 85;
+  let rowCls = '';
+  if (rate >= target) rowCls = 'row-ok';
+  else if (rate >= target - 15) rowCls = '';
+  else if (rate > 0) rowCls = 'row-warn';
+  else rowCls = '';
+
+  const hatchDate = getHatchDate(l);
+  const days = daysUntil(hatchDate);
+  let eclBadge = '';
+  if (!hatchDate) eclBadge = '<span class="text-mute">—</span>';
+  else if (days === 0) eclBadge = `<span class="eclosion-indicator today"><span class="dot"></span> Aujourd'hui ! 🐣</span>`;
+  else if (days > 0 && days <= 3) eclBadge = `<span class="eclosion-indicator urgent"><span class="dot"></span> J-${days}</span>`;
+  else if (days > 3 && days <= 7) eclBadge = `<span class="eclosion-indicator soon"><span class="dot"></span> J-${days}</span>`;
+  else if (days > 0) eclBadge = `<span class="eclosion-indicator future"><span class="dot"></span> J-${days}</span>`;
+  else eclBadge = `<span class="eclosion-indicator past"><span class="dot"></span> ${Math.abs(days)}j</span>`;
+
+  let statusBadge = '';
+  if (rate >= target) statusBadge = `<span class="badge-status badge-ok">✅ ${fmtPct(rate, 0)}</span>`;
+  else if (rate >= target - 15) statusBadge = `<span class="badge-status badge-warn">⚠️ ${fmtPct(rate, 0)}</span>`;
+  else if (rate > 0) statusBadge = `<span class="badge-status badge-bad">❌ ${fmtPct(rate, 0)}</span>`;
+  else statusBadge = `<span class="badge-status badge-gray">—</span>`;
+
+  return `<tr class="${rowCls}" data-lot-id="${l.id}">
+    <td><strong>${escHtml(l.ref || '—')}</strong><br><span class="text-mute fs-12">${escHtml(l.race || '')}</span></td>
+    <td>${escHtml(l.couveuse || '—')}</td>
+    <td>${fmtDate(l.collecte)}</td>
+    <td class="num">${fmtNum(l.qty)}</td>
+    <td class="num"><input class="cell" type="number" min="0" data-field="fissure" value="${l.fissure || 0}" onchange="updateLotField('${l.id}','fissure',this.value)" /></td>
+    <td class="num calc">${fmtNum(c.bon)}</td>
+    <td>${fmtDate(l.incubation)}</td>
+    <td class="num calc">${fmtNum(c.bon)}</td>
+    <td class="num"><input class="cell" type="number" min="0" max="${c.bon}" data-field="j7Clairs" value="${l.j7Clairs || 0}" onchange="updateLotField('${l.id}','j7Clairs',this.value)" /></td>
+    <td class="num"><input class="cell" type="number" min="0" data-field="j7Mort" value="${l.j7Mort || 0}" onchange="updateLotField('${l.id}','j7Mort',this.value)" /></td>
+    <td class="num"><input class="cell" type="number" min="0" max="${c.bon}" data-field="j7Fec" value="${l.j7Fec ?? c.fecondesJ7}" onchange="updateLotField('${l.id}','j7Fec',this.value)" /></td>
+    <td class="num calc">${fmtNum(c.fecondesJ7)}</td>
+    <td class="num"><input class="cell" type="number" min="0" data-field="j14Cont" value="${l.j14Cont || 0}" onchange="updateLotField('${l.id}','j14Cont',this.value)" /></td>
+    <td class="num"><input class="cell" type="number" min="0" data-field="j14Mort" value="${l.j14Mort || 0}" onchange="updateLotField('${l.id}','j14Mort',this.value)" /></td>
+    <td class="num"><input class="cell" type="number" min="0" data-field="j14Bon" value="${l.j14Bon ?? c.bonsJ14}" onchange="updateLotField('${l.id}','j14Bon',this.value)" /></td>
+    <td class="num calc">${fmtNum(c.bonsJ14)}</td>
+    <td class="num"><input class="cell" type="number" min="0" data-field="eclMal" value="${l.eclMal || 0}" onchange="updateLotField('${l.id}','eclMal',this.value)" /></td>
+    <td class="num"><input class="cell" type="number" min="0" data-field="eclMort" value="${l.eclMort || 0}" onchange="updateLotField('${l.id}','eclMort',this.value)" /></td>
+    <td class="num calc" style="font-size:14px">${fmtNum(c.resultat)}</td>
+    <td>${statusBadge}</td>
+    <td>${eclBadge}</td>
+    <td>${escHtml(l.repro || '—')}</td>
+    <td><span class="text-mute fs-12" title="${escAttr(l.notes || '')}">${escHtml((l.notes || '').slice(0, 30))}${(l.notes || '').length > 30 ? '…' : ''}</span></td>
+    <td>
+      <div class="actions">
+        <button class="icon-btn" title="Voir détail" onclick="openLotPanel('${l.id}')">👁️</button>
+        <button class="icon-btn" title="Modifier" onclick="editLot('${l.id}')">✏️</button>
+        <button class="icon-btn" title="Supprimer" onclick="deleteLot('${l.id}')">🗑️</button>
+      </div>
+    </td>
+  </tr>`;
+}
+
+function updateLotField(id, field, value) {
+  const lot = lots.find(l => l.id === id);
+  if (!lot) return;
+  const v = parseInt(value, 10);
+  if (isNaN(v) || v < 0) { toast('Valeur invalide', 'error'); return; }
+  // validation croisée
+  const c = calcLot(lot);
+  if (field === 'j7Clairs' && v > c.bon) { toast(`Maximum ${c.bon} œufs introduits`, 'error'); return; }
+  if (field === 'j7Mort' && v > c.bon) { toast(`Maximum ${c.bon}`, 'error'); return; }
+  if (field === 'j7Fec' && v > c.bon) { toast(`Maximum ${c.bon}`, 'error'); return; }
+  lot[field] = v;
+  persist();
+  renderLots();
+  // rafraichir dashboard si visible
+  if (document.getElementById('sec-dashboard').classList.contains('active')) renderDashboard();
+}
+
+function renderLotStats() {
+  const totalEggs = lots.reduce((s, l) => s + num(l.qty), 0);
+  const totalChicks = lots.reduce((s, l) => s + calcLot(l).resultat, 0);
+  const avgRate = lots.length ? lots.reduce((s, l) => s + hatchRate(l), 0) / lots.length : 0;
+  document.getElementById('lotsStats').innerHTML = `
+    <div class="stat-pill">📦 <strong>${fmtNum(lots.length)}</strong> lots</div>
+    <div class="stat-pill">🥚 <strong>${fmtNum(totalEggs)}</strong> œufs</div>
+    <div class="stat-pill">🐣 <strong>${fmtNum(totalChicks)}</strong> poussins</div>
+    <div class="stat-pill">📊 Taux moyen <strong>${fmtPct(avgRate)}</strong></div>
+  `;
+}
+
+/* ============================================================
+   ALERTS
+   ============================================================ */
+function renderAlerts() {
+  const alerts = [];
+  const today = new Date(); today.setHours(0,0,0,0);
+  lots.forEach(l => {
+    const c = calcLot(l);
+    const rate = hatchRate(l);
+    const target = settings.targetHatch || 85;
+    // éclosion proche
+    const hd = getHatchDate(l);
+    const days = daysUntil(hd);
+    if (hd && days >= 0 && days <= 3 && c.bonsJ14 > 0) {
+      alerts.push({ type: days === 0 ? 'danger' : 'warning', icon: '🐣', msg: `<b>${escHtml(l.ref)}</b> — éclosion dans ${days === 0 ? "aujourd'hui !" : 'J-' + days}`, time: fmtDate(hd) });
+    }
+    // mortalité élevée
+    if (c.bon > 0) {
+      const totalMort = (c.bon - c.resultat);
+      const pct = (totalMort / c.bon) * 100;
+      if (pct >= (settings.mortalAlert || 15)) {
+        alerts.push({ type: 'danger', icon: '⚠️', msg: `<b>${escHtml(l.ref)}</b> — Mortalité ${fmtPct(pct, 0)} (seuil ${settings.mortalAlert}%)`, time: '' });
+      }
+    }
+    // perte mirage
+    if (c.bon > 0) {
+      const lostJ7 = num(l.j7Clairs) + num(l.j7Mort);
+      if (lostJ7 > 0) {
+        const pct = (lostJ7 / c.bon) * 100;
+        if (pct >= (settings.mirageAlert || 10)) {
+          alerts.push({ type: 'warning', icon: '🔍', msg: `<b>${escHtml(l.ref)}</b> — Pertes mirage J7: ${fmtPct(pct, 0)} (${lostJ7} œufs)`, time: '' });
+        }
+      }
+    }
+    // objectif non atteint sur lot terminé
+    if (c.resultat > 0 && rate < target - 15) {
+      alerts.push({ type: 'info', icon: '📉', msg: `<b>${escHtml(l.ref)}</b> — Taux d'éclosion sous l'objectif (${fmtPct(rate)} vs ${target}%)`, time: '' });
+    }
+  });
+  // température
+  const lastInc = incubEntries.slice().sort((a,b) => new Date(b.date) - new Date(a.date))[0];
+  if (lastInc) {
+    const t = numf(lastInc.temp);
+    const tt = numf(settings.tempTarget);
+    if (Math.abs(t - tt) > 1) {
+      alerts.push({ type: 'warning', icon: '🌡️', msg: `Dernière mesure T° hors cible : <b>${t}°C</b> (cible ${tt}°C)`, time: fmtDate(lastInc.date) });
+    }
+  }
+  const card = document.getElementById('alertsCard');
+  const list = document.getElementById('alertsList');
+  document.getElementById('alertsCount').textContent = alerts.length;
+  if (!alerts.length) {
+    card.style.display = 'none';
+    return;
+  }
+  card.style.display = 'block';
+  list.innerHTML = alerts.map(a => `
+    <div class="alert-item ${a.type}">
+      <span class="icon">${a.icon}</span>
+      <div class="msg">${a.msg}</div>
+      ${a.time ? `<div class="time">${a.time}</div>` : ''}
+    </div>
+  `).join('');
+}
+
+/* ============================================================
+   LOT MODAL
+   ============================================================ */
+function openLotModal(lot = null) {
+  document.getElementById('lotModal').style.display = 'flex';
+  document.getElementById('lotModalTitle').textContent = lot ? 'Modifier le lot' : 'Nouveau lot';
+  document.getElementById('lotId').value = lot?.id || '';
+  document.getElementById('lotRef').value = lot?.ref || ('L-' + new Date().getFullYear() + '-' + String(lots.length + 1).padStart(3, '0'));
+  document.getElementById('lotCouveuse').value = lot?.couveuse || '';
+  document.getElementById('lotRace').value = lot?.race || '';
+  document.getElementById('lotRepro').value = lot?.repro || '';
+  document.getElementById('lotCollecte').value = lot?.collecte || fmtDateInput(new Date());
+  document.getElementById('lotIncubation').value = lot?.incubation || fmtDateInput(new Date());
+  document.getElementById('lotQty').value = lot?.qty || '';
+  document.getElementById('lotPonte').value = lot?.ponte || '';
+  document.getElementById('lotFissure').value = lot?.fissure || 0;
+  document.getElementById('lotJ7Clairs').value = lot?.j7Clairs || 0;
+  document.getElementById('lotJ7Mort').value = lot?.j7Mort || 0;
+  document.getElementById('lotJ7Fec').value = lot?.j7Fec ?? '';
+  document.getElementById('lotJ14Cont').value = lot?.j14Cont || 0;
+  document.getElementById('lotJ14Mort').value = lot?.j14Mort || 0;
+  document.getElementById('lotJ14Bon').value = lot?.j14Bon ?? '';
+  document.getElementById('lotEclMal').value = lot?.eclMal || 0;
+  document.getElementById('lotEclMort').value = lot?.eclMort || 0;
+  document.getElementById('lotCoutOeufs').value = lot?.cout?.oeufs || 0;
+  document.getElementById('lotCoutEnergie').value = lot?.cout?.energie || 0;
+  document.getElementById('lotCoutAliment').value = lot?.cout?.aliment || 0;
+  document.getElementById('lotCoutMO').value = lot?.cout?.mo || 0;
+  document.getElementById('lotNotes').value = lot?.notes || '';
+  recomputeModalCalcs();
+  // live updates
+  ['lotQty','lotFissure','lotJ7Clairs','lotJ7Mort','lotJ14Cont','lotJ14Mort','lotEclMal','lotEclMort'].forEach(id => {
+    document.getElementById(id).oninput = recomputeModalCalcs;
+  });
+}
+function closeLotModal() { document.getElementById('lotModal').style.display = 'none'; }
+function recomputeModalCalcs() {
+  const qty = num(document.getElementById('lotQty').value);
+  const fissure = num(document.getElementById('lotFissure').value);
+  const bon = Math.max(0, qty - fissure);
+  const j7Clairs = num(document.getElementById('lotJ7Clairs').value);
+  const j7Mort = num(document.getElementById('lotJ7Mort').value);
+  const j7Fec = Math.max(0, bon - j7Clairs - j7Mort);
+  const j14Cont = num(document.getElementById('lotJ14Cont').value);
+  const j14Mort = num(document.getElementById('lotJ14Mort').value);
+  const j14Bon = Math.max(0, j7Fec - j14Cont - j14Mort);
+  const eclMal = num(document.getElementById('lotEclMal').value);
+  const eclMort = num(document.getElementById('lotEclMort').value);
+  const res = Math.max(0, j14Bon - eclMal - eclMort);
+  document.getElementById('lotBon').value = bon;
+  document.getElementById('lotJ7Fec').value = j7Fec;
+  document.getElementById('lotJ14Bon').value = j14Bon;
+  document.getElementById('lotResultat').value = res;
+}
+
+function saveLot(e) {
+  e.preventDefault();
+  const id = document.getElementById('lotId').value;
+  const data = {
+    ref: document.getElementById('lotRef').value.trim(),
+    couveuse: document.getElementById('lotCouveuse').value.trim(),
+    race: document.getElementById('lotRace').value.trim(),
+    repro: document.getElementById('lotRepro').value.trim(),
+    collecte: document.getElementById('lotCollecte').value,
+    incubation: document.getElementById('lotIncubation').value,
+    qty: num(document.getElementById('lotQty').value),
+    ponte: document.getElementById('lotPonte').value,
+    fissure: num(document.getElementById('lotFissure').value),
+    j7Clairs: num(document.getElementById('lotJ7Clairs').value),
+    j7Mort: num(document.getElementById('lotJ7Mort').value),
+    j7Fec: num(document.getElementById('lotJ7Fec').value),
+    j14Cont: num(document.getElementById('lotJ14Cont').value),
+    j14Mort: num(document.getElementById('lotJ14Mort').value),
+    j14Bon: num(document.getElementById('lotJ14Bon').value),
+    eclMal: num(document.getElementById('lotEclMal').value),
+    eclMort: num(document.getElementById('lotEclMort').value),
+    cout: {
+      oeufs: numf(document.getElementById('lotCoutOeufs').value),
+      energie: numf(document.getElementById('lotCoutEnergie').value),
+      aliment: numf(document.getElementById('lotCoutAliment').value),
+      mo: numf(document.getElementById('lotCoutMO').value)
+    },
+    notes: document.getElementById('lotNotes').value.trim(),
+    updatedAt: Date.now()
+  };
+  // validations
+  const bon = data.qty - data.fissure;
+  if (bon < 0) { toast('Fissurés > quantité', 'error'); return; }
+  if (data.j7Clairs + data.j7Mort > bon) { toast('Mirage J7 : clairs + mortalités > œufs introduits', 'error'); return; }
+  if (data.j14Cont + data.j14Mort > data.j7Fec) { toast('Mirage J14 : contaminés + mortalités > fécondés J7', 'error'); return; }
+  if (data.eclMal + data.eclMort > data.j14Bon) { toast('Éclosion : malformés + morts > bons J14', 'error'); return; }
+  if (id) {
+    const idx = lots.findIndex(l => l.id === id);
+    if (idx >= 0) lots[idx] = { ...lots[idx], ...data };
+    toast('Lot mis à jour ✨', 'success');
+  } else {
+    data.id = uid();
+    data.createdAt = Date.now();
+    lots.push(data);
+    toast('Lot créé avec succès 🐣', 'success');
+  }
+  persist();
+  closeLotModal();
+  renderAll();
+}
+function editLot(id) {
+  const lot = lots.find(l => l.id === id);
+  if (lot) openLotModal(lot);
+}
+function deleteLot(id) {
+  const lot = lots.find(l => l.id === id);
+  if (!lot) return;
+  if (!confirm(`Supprimer définitivement le lot "${lot.ref}" ?`)) return;
+  lots = lots.filter(l => l.id !== id);
+  persist();
+  toast('Lot supprimé', 'info');
+  renderAll();
+}
+
+/* ============================================================
+   LOT DETAIL PANEL
+   ============================================================ */
+function openLotPanel(id) {
+  const lot = lots.find(l => l.id === id);
+  if (!lot) return;
+  const c = calcLot(lot);
+  const rate = hatchRate(lot);
+  const target = settings.targetHatch || 85;
+  const hatchDate = getHatchDate(lot);
+  const days = daysUntil(hatchDate);
+  const totalCost = (lot.cout?.oeufs || 0) + (lot.cout?.energie || 0) + (lot.cout?.aliment || 0) + (lot.cout?.mo || 0);
+  const costPerChick = c.resultat > 0 ? totalCost / c.resultat : 0;
+  document.getElementById('lotPanelTitle').textContent = `Lot ${lot.ref || ''}`;
+  const rel = incubEntries.filter(e => e.couveuse === lot.couveuse).sort((a,b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
+  document.getElementById('lotPanelBody').innerHTML = `
+    <div class="kpi-grid" style="grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px">
+      <div class="kpi green"><div class="icon-circle">🥚</div><div class="label">Collectés</div><div class="value" style="font-size:22px">${fmtNum(lot.qty)}</div></div>
+      <div class="kpi violet"><div class="icon-circle">🐣</div><div class="label">Poussins</div><div class="value" style="font-size:22px">${fmtNum(c.resultat)}</div></div>
+      <div class="kpi sky"><div class="icon-circle">📊</div><div class="label">Taux éclosion</div><div class="value" style="font-size:22px">${fmtPct(rate)}</div><div class="delta">Objectif ${target}%</div></div>
+      <div class="kpi amber"><div class="icon-circle">📅</div><div class="label">Éclosion</div><div class="value" style="font-size:18px">${hatchDate ? fmtDate(hatchDate) : '—'}</div><div class="delta">${days === null ? '' : (days === 0 ? "aujourd'hui !" : (days > 0 ? 'J-' + days : Math.abs(days) + 'j passé'))}</div></div>
+    </div>
+
+    <h4 class="fs-14 fw-700 mb-2">📈 Funnel de pertes</h4>
+    <div class="card mb-3" style="background:var(--gray-50)">
+      <div class="card-body" style="padding:14px">
+        ${funnelBar('Collecte', lot.qty, lot.qty, 'primary')}
+        ${funnelBar('Bons (introduits)', c.bon, lot.qty, 'primary')}
+        ${funnelBar('Fécondés J7', c.fecondesJ7, lot.qty, 'amber')}
+        ${funnelBar('Bons J14', c.bonsJ14, lot.qty, 'violet')}
+        ${funnelBar('Poussins', c.resultat, lot.qty, 'green')}
+      </div>
+    </div>
+
+    <h4 class="fs-14 fw-700 mb-2">💰 Coûts</h4>
+    <div class="card mb-3">
+      <div class="card-body" style="padding:14px">
+        <div class="flex justify-between fs-13 mb-2"><span>Œufs</span><strong>${fmtEur(lot.cout?.oeufs || 0)}</strong></div>
+        <div class="flex justify-between fs-13 mb-2"><span>Énergie</span><strong>${fmtEur(lot.cout?.energie || 0)}</strong></div>
+        <div class="flex justify-between fs-13 mb-2"><span>Aliment</span><strong>${fmtEur(lot.cout?.aliment || 0)}</strong></div>
+        <div class="flex justify-between fs-13 mb-2"><span>Main d'œuvre</span><strong>${fmtEur(lot.cout?.mo || 0)}</strong></div>
+        <hr style="margin:8px 0; border:none; border-top:1px dashed var(--gray-300)">
+        <div class="flex justify-between fw-700"><span>Total</span><span>${fmtEur(totalCost)}</span></div>
+        <div class="flex justify-between text-success fw-700"><span>Coût / poussin</span><span>${fmtEur(costPerChick)}</span></div>
+      </div>
+    </div>
+
+    ${lot.notes ? `<h4 class="fs-14 fw-700 mb-2">📝 Notes</h4><div class="alert-item info mb-3"><span class="icon">📌</span><div class="msg">${escHtml(lot.notes)}</div></div>` : ''}
+
+    ${rel.length ? `<h4 class="fs-14 fw-700 mb-2">🌡️ Derniers relevés T°/hum.</h4><div class="card mb-3"><div class="card-body" style="padding:8px 14px">${rel.map(r => `<div class="flex justify-between fs-13" style="padding:6px 0; border-bottom:1px dashed var(--gray-200)"><span>${fmtDate(r.date)}</span><span>${r.temp}°C / ${r.hum}%</span></div>`).join('')}</div></div>` : ''}
+
+    <div class="form-actions">
+      <button class="btn btn-danger" onclick="deleteLot('${lot.id}'); closeLotPanel()">🗑️ Supprimer</button>
+      <button class="btn btn-primary" onclick="editLot('${lot.id}'); closeLotPanel()">✏️ Modifier</button>
+    </div>
+  `;
+  document.getElementById('lotPanel').classList.add('open');
+}
+function closeLotPanel() { document.getElementById('lotPanel').classList.remove('open'); }
+function funnelBar(label, val, max, color) {
+  const pct = max > 0 ? (val / max) * 100 : 0;
+  return `<div class="mb-2">
+    <div class="flex justify-between fs-12 mb-2"><span>${label}</span><strong>${fmtNum(val)}</strong></div>
+    <div style="height:8px; background:var(--gray-200); border-radius:4px; overflow:hidden">
+      <div style="height:100%; width:${pct}%; background:var(--primary-500); border-radius:4px; transition:width .5s"></div>
+    </div>
+  </div>`;
+}
+
+/* ============================================================
+   DASHBOARD
+   ============================================================ */
+const charts = {};
+function destroyChart(name) { if (charts[name]) { charts[name].destroy(); charts[name] = null; } }
+function renderDashboard() {
+  const totalEggs = lots.reduce((s, l) => s + num(l.qty), 0);
+  const totalBon = lots.reduce((s, l) => s + calcLot(l).bon, 0);
+  const totalChicks = lots.reduce((s, l) => s + calcLot(l).resultat, 0);
+  const totalFis = lots.reduce((s, l) => s + num(l.fissure), 0);
+  const totalClairs = lots.reduce((s, l) => s + num(l.j7Clairs), 0);
+  const totalJ7Mort = lots.reduce((s, l) => s + num(l.j7Mort), 0);
+  const totalJ14Mort = lots.reduce((s, l) => s + num(l.j14Mort), 0);
+  const totalEclMal = lots.reduce((s, l) => s + num(l.eclMal), 0);
+  const totalEclMort = lots.reduce((s, l) => s + num(l.eclMort), 0);
+  const totalMort = totalJ7Mort + totalJ14Mort + totalEclMort;
+  const avgRate = totalBon ? (totalChicks / totalBon) * 100 : 0;
+  const mortalRate = totalBon ? (totalMort / totalBon) * 100 : 0;
+  const lossMirage = totalBon ? ((totalClairs + totalJ7Mort) / totalBon) * 100 : 0;
+  const active = lots.filter(l => {
+    const d = daysUntil(getHatchDate(l));
+    return d !== null && d >= -3;
+  }).length;
+
+  document.getElementById('kpiGrid').innerHTML = `
+    <div class="kpi green"><div class="icon-circle">📦</div><div class="label">Lots actifs</div><div class="value">${active}</div><div class="delta">sur ${lots.length} total</div></div>
+    <div class="kpi sky"><div class="icon-circle">🥚</div><div class="label">Œufs collectés</div><div class="value">${fmtNum(totalEggs)}</div><div class="delta up">↑ ${fmtNum(totalBon)} introduits</div></div>
+    <div class="kpi green"><div class="icon-circle">🐣</div><div class="label">Poussins éclos</div><div class="value">${fmtNum(totalChicks)}</div><div class="delta up">↑ ${fmtPct(avgRate)} du total</div></div>
+    <div class="kpi amber"><div class="icon-circle">📊</div><div class="label">Taux d'éclosion</div><div class="value">${fmtPct(avgRate, 1)}</div><div class="delta">Objectif ${settings.targetHatch}%</div></div>
+    <div class="kpi rose"><div class="icon-circle">💀</div><div class="label">Mortalité globale</div><div class="value">${fmtPct(mortalRate, 1)}</div><div class="delta down">${fmtNum(totalMort)} pertes</div></div>
+    <div class="kpi violet"><div class="icon-circle">🔍</div><div class="label">Pertes mirage</div><div class="value">${fmtPct(lossMirage, 1)}</div><div class="delta">${fmtNum(totalClairs + totalJ7Mort)} œufs</div></div>
+  `;
+
+  // Chart 1: Taux d'éclosion par lot
+  destroyChart('hatchRate');
+  const ctx1 = document.getElementById('chartHatchRate');
+  if (ctx1) {
+    const labels = lots.map(l => l.ref || '—');
+    const data = lots.map(l => Number(hatchRate(l).toFixed(1)));
+    const colors = data.map(v => v >= (settings.targetHatch || 85) ? 'rgba(16,185,129,0.7)' : v >= (settings.targetHatch || 85) - 15 ? 'rgba(245,158,11,0.7)' : 'rgba(244,63,94,0.7)');
+    charts.hatchRate = new Chart(ctx1, {
+      type: 'bar',
+      data: { labels, datasets: [{ label: 'Taux d\'éclosion (%)', data, backgroundColor: colors, borderRadius: 6 }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } } } }
+    });
+  }
+
+  // Chart 2: Pertes à chaque étape
+  destroyChart('losses');
+  const ctx2 = document.getElementById('chartLosses');
+  if (ctx2) {
+    charts.losses = new Chart(ctx2, {
+      type: 'bar',
+      data: {
+        labels: ['Fissurés', 'Clairs J7', 'Mort J7', 'Contaminés J14', 'Mort J14', 'Malformés', 'Mort-nés'],
+        datasets: [{ label: 'Œufs perdus', data: [totalFis, totalClairs, totalJ7Mort, lots.reduce((s,l)=>s+num(l.j14Cont),0), totalJ14Mort, totalEclMal, totalEclMort], backgroundColor: ['#f43f5e','#f59e0b','#ef4444','#8b5cf6','#dc2626','#0ea5e9','#64748b'], borderRadius: 6 }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+    });
+  }
+
+  // Chart 3: Répartition par couveuse
+  destroyChart('byIncub');
+  const ctx3 = document.getElementById('chartByIncub');
+  if (ctx3) {
+    const groups = {};
+    lots.forEach(l => {
+      const k = l.couveuse || 'Non spécifié';
+      if (!groups[k]) groups[k] = { lots: 0, eggs: 0, chicks: 0 };
+      groups[k].lots++;
+      groups[k].eggs += num(l.qty);
+      groups[k].chicks += calcLot(l).resultat;
+    });
+    const labels = Object.keys(groups);
+    charts.byIncub = new Chart(ctx3, {
+      type: 'doughnut',
+      data: {
+        labels: labels.length ? labels : ['Aucun lot'],
+        datasets: [{ data: labels.length ? labels.map(k => groups[k].eggs) : [1], backgroundColor: ['#10b981','#0ea5e9','#8b5cf6','#f59e0b','#f43f5e','#06b6d4','#84cc16'] }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
+    });
+  }
+
+  // Chart 4: Évolution temporelle
+  destroyChart('time');
+  const ctx4 = document.getElementById('chartTime');
+  if (ctx4) {
+    const sorted = lots.filter(l => l.incubation).slice().sort((a,b) => new Date(a.incubation) - new Date(b.incubation));
+    charts.time = new Chart(ctx4, {
+      type: 'line',
+      data: {
+        labels: sorted.map(l => fmtDate(l.incubation)),
+        datasets: [
+          { label: 'Taux éclosion (%)', data: sorted.map(l => Number(hatchRate(l).toFixed(1))), borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.15)', fill: true, tension: 0.3, yAxisID: 'y' },
+          { label: 'Poussins', data: sorted.map(l => calcLot(l).resultat), borderColor: '#0ea5e9', backgroundColor: 'rgba(14,165,233,0.15)', fill: false, tension: 0.3, yAxisID: 'y1' }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        scales: {
+          y: { type: 'linear', position: 'left', beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } },
+          y1: { type: 'linear', position: 'right', beginAtZero: true, grid: { drawOnChartArea: false } }
+        }
+      }
+    });
+  }
+}
+
+/* ============================================================
+   INCUBATORS / T°/HUMIDITY
+   ============================================================ */
+function openIncubModal() {
+  document.getElementById('incubModal').style.display = 'flex';
+  document.getElementById('incDate').value = fmtDateInput(new Date());
+  document.getElementById('incCou').value = '';
+  document.getElementById('incTemp').value = settings.tempTarget || 37.8;
+  document.getElementById('incHum').value = settings.humTarget || 55;
+  document.getElementById('incNotes').value = '';
+}
+function closeIncubModal() { document.getElementById('incubModal').style.display = 'none'; }
+function saveIncubEntry(e) {
+  e.preventDefault();
+  const entry = {
+    id: uid(),
+    date: document.getElementById('incDate').value,
+    couveuse: document.getElementById('incCou').value.trim() || 'Couveuse 1',
+    temp: numf(document.getElementById('incTemp').value),
+    hum: numf(document.getElementById('incHum').value),
+    notes: document.getElementById('incNotes').value.trim()
+  };
+  incubEntries.push(entry);
+  persist();
+  closeIncubModal();
+  renderIncubSection();
+  toast('Relevé enregistré 🌡️', 'success');
+}
+function renderIncubSection() {
+  renderIncubTable();
+  renderIncubChart();
+  // alerts
+  renderAlerts();
+}
+function renderIncubTable() {
+  const tbody = document.getElementById('incubTbody');
+  const search = (document.getElementById('incubSearch')?.value || '').toLowerCase();
+  const sorted = incubEntries.slice().sort((a,b) => new Date(b.date) - new Date(a.date));
+  const filtered = sorted.filter(e => !search || (e.couveuse + ' ' + e.notes).toLowerCase().includes(search));
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan="6"><div class="empty"><span class="emoji">🌡️</span><h4>Aucun relevé</h4><p>Commencez à enregistrer vos mesures quotidiennes de température et humidité.</p></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = filtered.map(e => {
+    const t = numf(e.temp), h = numf(e.hum);
+    const tt = numf(settings.tempTarget);
+    const ht = numf(settings.humTarget);
+    const tOk = Math.abs(t - tt) <= 0.5;
+    const hOk = Math.abs(h - ht) <= 10;
+    const status = (tOk && hOk) ? '<span class="badge-status badge-ok">✅ OK</span>' : '<span class="badge-status badge-warn">⚠️ Hors cible</span>';
+    return `<tr>
+      <td>${fmtDate(e.date)}</td>
+      <td>${escHtml(e.couveuse || '—')}</td>
+      <td class="num">${t} °C</td>
+      <td class="num">${h} %</td>
+      <td>${status}</td>
+      <td><div class="actions"><button class="icon-btn" onclick="deleteIncubEntry('${e.id}')">🗑️</button></div></td>
+    </tr>`;
+  }).join('');
+}
+function deleteIncubEntry(id) {
+  if (!confirm('Supprimer ce relevé ?')) return;
+  incubEntries = incubEntries.filter(e => e.id !== id);
+  persist();
+  renderIncubSection();
+  toast('Relevé supprimé', 'info');
+}
+function renderIncubChart() {
+  destroyChart('incubEnv');
+  const ctx = document.getElementById('chartIncubEnv');
+  if (!ctx) return;
+  const filter = document.getElementById('incubFilter')?.value || '';
+  const data = incubEntries.filter(e => !filter || e.couveuse === filter).sort((a,b) => new Date(a.date) - new Date(b.date));
+  if (!data.length) {
+    ctx.parentElement.innerHTML = '<div class="empty" style="padding:30px"><span class="emoji">📊</span><h4>Aucune donnée</h4><p>Ajoutez vos premiers relevés pour voir les courbes.</p></div>';
+    return;
+  }
+  // group by couveuse
+  const groups = {};
+  data.forEach(e => {
+    if (!groups[e.couveuse]) groups[e.couveuse] = { temp: [], hum: [], dates: [] };
+    groups[e.couveuse].temp.push(e.temp);
+    groups[e.couveuse].hum.push(e.hum);
+    groups[e.couveuse].dates.push(fmtDate(e.date));
+  });
+  const colors = ['#10b981', '#0ea5e9', '#8b5cf6', '#f59e0b', '#f43f5e'];
+  const datasets = [];
+  let i = 0;
+  Object.keys(groups).forEach(c => {
+    datasets.push({ label: c + ' - T°', data: groups[c].temp, borderColor: colors[i % colors.length], backgroundColor: colors[i % colors.length] + '22', yAxisID: 'y', tension: 0.3 });
+    i++;
+  });
+  // restore canvas if was replaced
+  if (!document.getElementById('chartIncubEnv')) {
+    const box = document.querySelector('#sec-incubators .chart-box');
+    box.innerHTML = '<canvas id="chartIncubEnv"></canvas>';
+  }
+  const canvas = document.getElementById('chartIncubEnv');
+  charts.incubEnv = new Chart(canvas, {
+    type: 'line',
+    data: { labels: groups[Object.keys(groups)[0]].dates, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      scales: {
+        y: { type: 'linear', position: 'left', title: { display: true, text: 'Température (°C)' } },
+        y1: { type: 'linear', position: 'right', title: { display: true, text: 'Humidité (%)' }, grid: { drawOnChartArea: false } }
+      }
+    }
+  });
+}
+
+/* ============================================================
+   CALENDAR
+   ============================================================ */
+let calDate = new Date();
+function calNav(d) {
+  if (d === 0) calDate = new Date();
+  else calDate.setMonth(calDate.getMonth() + d);
+  renderCalendar();
+}
+function renderCalendar() {
+  const y = calDate.getFullYear(), m = calDate.getMonth();
+  document.getElementById('calTitle').textContent = new Date(y, m, 1).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+  const firstDay = new Date(y, m, 1);
+  const lastDay = new Date(y, m + 1, 0);
+  const startDow = (firstDay.getDay() + 6) % 7; // Lundi=0
+  const days = lastDay.getDate();
+  const dows = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
+  const today = new Date(); today.setHours(0,0,0,0);
+  let html = dows.map(d => `<div class="dow">${d}</div>`).join('');
+  // leading blanks
+  for (let i = 0; i < startDow; i++) html += '<div class="day out"></div>';
+  for (let day = 1; day <= days; day++) {
+    const d = new Date(y, m, day);
+    const isToday = d.getTime() === today.getTime();
+    const events = [];
+    lots.forEach(l => {
+      if (!l.incubation) return;
+      const inc = new Date(l.incubation);
+      const clt = l.collecte ? new Date(l.collecte) : null;
+      const j7 = new Date(inc); j7.setDate(j7.getDate() + 7);
+      const j14 = new Date(inc); j14.setDate(j14.getDate() + 14);
+      const j19 = new Date(inc); j19.setDate(j19.getDate() + 19);
+      const ecl = getHatchDate(l);
+      if (clt && sameDay(clt, d)) events.push(`<div class="event collect" title="Collecte ${escAttr(l.ref)}">🥚 ${escHtml(l.ref)}</div>`);
+      if (sameDay(inc, d)) events.push(`<div class="event" title="Incubation ${escAttr(l.ref)}">🌡️ ${escHtml(l.ref)}</div>`);
+      if (sameDay(j7, d)) events.push(`<div class="event j7" title="Mirage J7">🔍 J7 ${escHtml(l.ref)}</div>`);
+      if (sameDay(j14, d)) events.push(`<div class="event j14" title="Mirage J14">🔍 J14 ${escHtml(l.ref)}</div>`);
+      if (sameDay(j19, d)) events.push(`<div class="event" style="background:var(--accent-amber)" title="Arrêt retournement">⏹️ ${escHtml(l.ref)}</div>`);
+      if (ecl && sameDay(ecl, d)) events.push(`<div class="event hatch" title="Éclosion">🐣 ${escHtml(l.ref)}</div>`);
+    });
+    html += `<div class="day${isToday ? ' today' : ''}"><div class="num">${day}</div>${events.join('')}</div>`;
+  }
+  document.getElementById('calGrid').innerHTML = html;
+}
+function sameDay(a, b) { return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate(); }
+
+/* ============================================================
+   COSTS
+   ============================================================ */
+function renderCosts() {
+  // KPI
+  const totals = lots.reduce((acc, l) => {
+    const c = calcLot(l);
+    acc.cost += (l.cout?.oeufs || 0) + (l.cout?.energie || 0) + (l.cout?.aliment || 0) + (l.cout?.mo || 0);
+    acc.chicks += c.resultat;
+    acc.eggs += num(l.qty);
+    return acc;
+  }, { cost: 0, chicks: 0, eggs: 0 });
+  const cpp = totals.chicks > 0 ? totals.cost / totals.chicks : 0;
+  const costEgg = totals.eggs > 0 ? totals.cost / totals.eggs : 0;
+  document.getElementById('costKpi').innerHTML = `
+    <div class="kpi green"><div class="icon-circle">💰</div><div class="label">Coût total</div><div class="value">${fmtEur(totals.cost)}</div><div class="delta">sur ${fmtNum(totals.eggs)} œufs</div></div>
+    <div class="kpi sky"><div class="icon-circle">🐣</div><div class="label">Coût / poussin</div><div class="value">${fmtEur(cpp)}</div><div class="delta">${totals.chicks} poussins</div></div>
+    <div class="kpi amber"><div class="icon-circle">🥚</div><div class="label">Coût / œuf</div><div class="value">${fmtEur(costEgg)}</div></div>
+    <div class="kpi violet"><div class="icon-circle">📦</div><div class="label">Lots</div><div class="value">${lots.length}</div><div class="delta">avec coûts</div></div>
+  `;
+  // table
+  const tbody = document.getElementById('costsTbody');
+  if (!lots.length) {
+    tbody.innerHTML = `<tr><td colspan="9"><div class="empty"><span class="emoji">💰</span><h4>Aucun coût</h4><p>Ajoutez des coûts lors de la création d'un lot ou via le bouton ci-dessus.</p></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = lots.map(l => {
+    const c = calcLot(l);
+    const couts = l.cout || {};
+    const total = (couts.oeufs || 0) + (couts.energie || 0) + (couts.aliment || 0) + (couts.mo || 0);
+    const cppL = c.resultat > 0 ? total / c.resultat : 0;
+    return `<tr>
+      <td><strong>${escHtml(l.ref || '—')}</strong></td>
+      <td class="num">${fmtNum(c.resultat)}</td>
+      <td class="num">${fmtEur(couts.oeufs || 0)}</td>
+      <td class="num">${fmtEur(couts.energie || 0)}</td>
+      <td class="num">${fmtEur(couts.aliment || 0)}</td>
+      <td class="num">${fmtEur(couts.mo || 0)}</td>
+      <td class="num fw-700">${fmtEur(total)}</td>
+      <td class="num fw-700 text-success">${fmtEur(cppL)}</td>
+      <td><div class="actions"><button class="icon-btn" onclick="openCostModal('${l.id}')">✏️</button></div></td>
+    </tr>`;
+  }).join('');
+}
+function openCostModal(lotId = null) {
+  document.getElementById('costModal').style.display = 'flex';
+  document.getElementById('costLot').value = lotId || '';
+  loadCostForm();
+}
+function closeCostModal() { document.getElementById('costModal').style.display = 'none'; }
+function loadCostForm() {
+  const id = document.getElementById('costLot').value;
+  if (!id) { ['cOeufs','cEnergie','cAliment','cMO'].forEach(x => document.getElementById(x).value = 0); return; }
+  const l = lots.find(x => x.id === id);
+  if (!l) return;
+  document.getElementById('cOeufs').value = l.cout?.oeufs || 0;
+  document.getElementById('cEnergie').value = l.cout?.energie || 0;
+  document.getElementById('cAliment').value = l.cout?.aliment || 0;
+  document.getElementById('cMO').value = l.cout?.mo || 0;
+}
+function saveCost(e) {
+  e.preventDefault();
+  const id = document.getElementById('costLot').value;
+  if (!id) { toast('Sélectionnez un lot', 'error'); return; }
+  const l = lots.find(x => x.id === id);
+  if (!l) return;
+  l.cout = {
+    oeufs: numf(document.getElementById('cOeufs').value),
+    energie: numf(document.getElementById('cEnergie').value),
+    aliment: numf(document.getElementById('cAliment').value),
+    mo: numf(document.getElementById('cMO').value)
+  };
+  persist();
+  closeCostModal();
+  renderCosts();
+  toast('Coûts enregistrés 💰', 'success');
+}
+
+/* ============================================================
+   CLIENTS
+   ============================================================ */
+function renderClients() {
+  const tbody = document.getElementById('clientsTbody');
+  if (!clients.length) {
+    tbody.innerHTML = `<tr><td colspan="9"><div class="empty"><span class="emoji">👥</span><h4>Aucun client</h4><p>Suivez vos commandes de poussins — réservé, payé, livré.</p><button class="btn btn-primary" onclick="openClientModal()">＋ Ajouter un client</button></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = clients.map(c => {
+    const lot = lots.find(l => l.id === c.lotId);
+    const total = num(c.qty) * numf(c.price);
+    const statusBadges = { reserved: 'badge-info', paid: 'badge-warn', delivered: 'badge-ok', cancelled: 'badge-gray' };
+    const statusLabels = { reserved: '📌 Réservé', paid: '💰 Payé', delivered: '✅ Livré', cancelled: '❌ Annulé' };
+    return `<tr>
+      <td><strong>${escHtml(c.name)}</strong></td>
+      <td>${escHtml(c.phone || '—')}<br><span class="text-mute fs-12">${escHtml(c.email || '')}</span></td>
+      <td>${escHtml(lot?.ref || '—')}</td>
+      <td class="num">${fmtNum(c.qty)}</td>
+      <td class="num">${fmtEur(numf(c.price))}</td>
+      <td class="num fw-700">${fmtEur(total)}</td>
+      <td><span class="badge-status ${statusBadges[c.status]}">${statusLabels[c.status] || c.status}</span></td>
+      <td>${fmtDate(c.date)}</td>
+      <td><div class="actions"><button class="icon-btn" onclick="editClient('${c.id}')">✏️</button><button class="icon-btn" onclick="deleteClient('${c.id}')">🗑️</button></div></td>
+    </tr>`;
+  }).join('');
+}
+function openClientModal(client = null) {
+  document.getElementById('clientModal').style.display = 'flex';
+  document.getElementById('clientModalTitle').textContent = client ? 'Modifier client' : 'Nouveau client';
+  document.getElementById('clientId').value = client?.id || '';
+  document.getElementById('clName').value = client?.name || '';
+  document.getElementById('clPhone').value = client?.phone || '';
+  document.getElementById('clEmail').value = client?.email || '';
+  document.getElementById('clLot').innerHTML = '<option value="">—</option>' + lots.map(l => `<option value="${l.id}" ${l.id === client?.lotId ? 'selected' : ''}>${escHtml(l.ref)}</option>`).join('');
+  document.getElementById('clQty').value = client?.qty || 0;
+  document.getElementById('clPrice').value = client?.price || 0;
+  document.getElementById('clStatus').value = client?.status || 'reserved';
+  document.getElementById('clDate').value = client?.date || '';
+  document.getElementById('clNotes').value = client?.notes || '';
+}
+function closeClientModal() { document.getElementById('clientModal').style.display = 'none'; }
+function saveClient(e) {
+  e.preventDefault();
+  const id = document.getElementById('clientId').value;
+  const data = {
+    name: document.getElementById('clName').value.trim(),
+    phone: document.getElementById('clPhone').value.trim(),
+    email: document.getElementById('clEmail').value.trim(),
+    lotId: document.getElementById('clLot').value,
+    qty: num(document.getElementById('clQty').value),
+    price: numf(document.getElementById('clPrice').value),
+    status: document.getElementById('clStatus').value,
+    date: document.getElementById('clDate').value,
+    notes: document.getElementById('clNotes').value.trim()
+  };
+  if (id) {
+    const idx = clients.findIndex(c => c.id === id);
+    if (idx >= 0) clients[idx] = { ...clients[idx], ...data };
+    toast('Client mis à jour', 'success');
+  } else {
+    data.id = uid();
+    data.createdAt = Date.now();
+    clients.push(data);
+    toast('Client ajouté 👤', 'success');
+  }
+  persist();
+  closeClientModal();
+  renderClients();
+}
+function editClient(id) { const c = clients.find(x => x.id === id); if (c) openClientModal(c); }
+function deleteClient(id) { if (!confirm('Supprimer ce client ?')) return; clients = clients.filter(c => c.id !== id); persist(); renderClients(); toast('Client supprimé', 'info'); }
+
+/* ============================================================
+   STATS
+   ============================================================ */
+function renderStats() {
+  // par couveuse
+  const byInc = {};
+  lots.forEach(l => {
+    const k = l.couveuse || 'Non spécifié';
+    if (!byInc[k]) byInc[k] = { lots: 0, eggs: 0, chicks: 0 };
+    byInc[k].lots++;
+    byInc[k].eggs += num(l.qty);
+    byInc[k].chicks += calcLot(l).resultat;
+  });
+  // par reproducteur
+  const byRep = {};
+  lots.forEach(l => {
+    const k = l.repro || 'Non spécifié';
+    if (!byRep[k]) byRep[k] = { lots: 0, eggs: 0, chicks: 0 };
+    byRep[k].lots++;
+    byRep[k].eggs += num(l.qty);
+    byRep[k].chicks += calcLot(l).resultat;
+  });
+
+  // Charts
+  destroyChart('incubPerf');
+  const ctx1 = document.getElementById('chartIncubPerf');
+  if (ctx1) {
+    const labels = Object.keys(byInc);
+    charts.incubPerf = new Chart(ctx1, {
+      type: 'bar',
+      data: { labels, datasets: [{ label: 'Taux éclosion (%)', data: labels.map(k => byInc[k].eggs ? Number((byInc[k].chicks / byInc[k].eggs * 100).toFixed(1)) : 0), backgroundColor: '#10b981', borderRadius: 6 }] },
+      options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, scales: { x: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } } } }
+    });
+  }
+  destroyChart('breederPerf');
+  const ctx2 = document.getElementById('chartBreederPerf');
+  if (ctx2) {
+    const labels = Object.keys(byRep);
+    charts.breederPerf = new Chart(ctx2, {
+      type: 'bar',
+      data: { labels, datasets: [{ label: 'Taux éclosion (%)', data: labels.map(k => byRep[k].eggs ? Number((byRep[k].chicks / byRep[k].eggs * 100).toFixed(1)) : 0), backgroundColor: '#8b5cf6', borderRadius: 6 }] },
+      options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, scales: { x: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } } } }
+    });
+  }
+
+  // Table
+  const target = settings.targetHatch || 85;
+  const tbody = document.getElementById('statsTbody');
+  const rows = [];
+  Object.entries(byInc).forEach(([k, v]) => {
+    const r = v.eggs ? (v.chicks / v.eggs * 100) : 0;
+    const cls = r >= target ? 'badge-ok' : r >= target - 15 ? 'badge-warn' : 'badge-bad';
+    const icon = r >= target ? '✅' : r >= target - 15 ? '⚠️' : '❌';
+    rows.push(`<tr><td>🌡️ <strong>${escHtml(k)}</strong></td><td class="num">${v.lots}</td><td class="num">${fmtNum(v.eggs)}</td><td class="num">${fmtNum(v.chicks)}</td><td class="num">${fmtPct(r)}</td><td><span class="badge-status ${cls}">${icon} ${r >= target ? 'OK' : r >= target - 15 ? 'À surveiller' : 'Critique'}</span></td></tr>`);
+  });
+  Object.entries(byRep).forEach(([k, v]) => {
+    const r = v.eggs ? (v.chicks / v.eggs * 100) : 0;
+    const cls = r >= target ? 'badge-ok' : r >= target - 15 ? 'badge-warn' : 'badge-bad';
+    const icon = r >= target ? '✅' : r >= target - 15 ? '⚠️' : '❌';
+    rows.push(`<tr><td>🐔 <strong>${escHtml(k)}</strong></td><td class="num">${v.lots}</td><td class="num">${fmtNum(v.eggs)}</td><td class="num">${fmtNum(v.chicks)}</td><td class="num">${fmtPct(r)}</td><td><span class="badge-status ${cls}">${icon} ${r >= target ? 'Top' : r >= target - 15 ? 'Moyen' : 'Faible'}</span></td></tr>`);
+  });
+  tbody.innerHTML = rows.length ? rows.join('') : `<tr><td colspan="6"><div class="empty"><span class="emoji">📊</span><h4>Pas encore de données</h4><p>Créez des lots avec couveuse et reproducteur pour voir les stats.</p></div></td></tr>`;
+}
+
+/* ============================================================
+   GUIDE
+   ============================================================ */
+function renderGuide() {
+  const steps = [
+    { day: 'J-7 à J0', cls: '', title: 'Sélection des œufs', body: 'Choisissez des œufs propres, de taille normale, sans fissure, pondus depuis moins de 7 jours. Stockez-les pointe en bas, à 12-15°C, 70-80% humidité, en les tournant 1×/jour.' },
+    { day: 'J0', cls: 'j-critical', title: 'Mise en incubation 🌡️', body: 'Réglez la couveuse à <b>37,8°C</b> et <b>55% d\'humidité</b> (stade 1). Placez les œufs couchés ou pointe en bas. Démarrez le retournement automatique (3-5×/jour) ou notez l\'heure pour le faire à la main.' },
+    { day: 'J1-J6', cls: '', title: 'Phase de développement', body: 'Surveillez T°/humidité 2×/jour. Ne pas ouvrir la couveuse trop souvent. Retournez les œufs si pas automatique. C\'est la phase la moins critique.' },
+    { day: 'J7', cls: 'j-mirage', title: '1er mirage 🔍', body: 'Mirage indispensable pour identifier les œufs clairs (non fécondés) et mortalités embryonnaires précoces. Retirez les œufs clairs et morts pour éviter la contamination. Comptez précisément.' },
+    { day: 'J8-J13', cls: '', title: 'Poursuite incubation', body: 'Continuez T° 37,8°C / 55% humidité. Le retournement est crucial : ne l\'oubliez pas. Vérifiez le développement si possible.' },
+    { day: 'J14', cls: 'j-mirage', title: '2e mirage 🔍', body: 'Vérifiez à nouveau : retirez les embryons morts (anneau de sang non bouclé) et œufs contaminés (odeur, aspect trouble). Ajustez l\'humidité à 60-65% en fin de semaine.' },
+    { day: 'J15-J18', cls: '', title: 'Phase finale de développement', body: 'L\'embryon grossit vite, occupe presque tout l\'œuf. Continuez retournement. Vérifiez l\'étanchéité de la couveuse et le niveau d\'eau dans les bacs.' },
+    { day: 'J19', cls: 'j-critical', title: 'Arrêt du retournement ⏹️', body: '<b>STOP retournement !</b> Les poussins se positionnent pour l\'éclosion. Ne plus ouvrir la couveuse jusqu\'à J21 sauf urgence. Augmentez humidité à 70-75%.' },
+    { day: 'J20', cls: '', title: 'Préparation éclosion', body: 'Humidité élevée (70-80%). Pas de retournement. Préparez la couveuse d\'éclosion ou préparez le fond avec un tapis antidérapant. Restez à proximité.' },
+    { day: 'J21', cls: 'j-hatch', title: 'Éclosion 🐣', body: 'Les poussins percent la coquille (24-36h). <b>Ne pas intervenir</b> pendant l\'éclosion, l\'humidité est cruciale. Sortez les poussins quand ils sont secs et duveteux (24-48h après le 1er perçage).' },
+    { day: 'J22-J23', cls: '', title: 'Fin d\'éclosion', body: 'Les retardataires percent. Vérifiez les œufs non éclos à J23 maximum : un œuf percé non fini = poussin mort en général.' },
+    { day: 'Post-éclosion', cls: '', title: 'Premiers soins poussins', body: 'Poussins 24-48h sans eau/nourriture (réserves vitellines). Puis : <b>eau tiède sucrée</b> (50g sucre/L), démarrage aliment poussin 0-4 semaines, T° 32-35°C la 1ère semaine (lampe chauffante), litière propre.' }
+  ];
+  document.getElementById('guideTimeline').innerHTML = steps.map(s => `
+    <div class="guide-step ${s.cls}">
+      <div class="day">${s.day}</div>
+      <h4>${s.title}</h4>
+      <p>${s.body}</p>
+    </div>
+  `).join('');
+}
+
+/* ============================================================
+   SETTINGS
+   ============================================================ */
+function renderSettings() {
+  document.getElementById('setTargetHatch').value = settings.targetHatch;
+  document.getElementById('setMortalAlert').value = settings.mortalAlert;
+  document.getElementById('setMirageAlert').value = settings.mirageAlert;
+  document.getElementById('setTemp').value = settings.tempTarget;
+  document.getElementById('setHum').value = settings.humTarget;
+  document.getElementById('setDays').value = settings.incubationDays;
+}
+function saveSettings(e) {
+  e.preventDefault();
+  settings = {
+    targetHatch: numf(document.getElementById('setTargetHatch').value) || 85,
+    mortalAlert: numf(document.getElementById('setMortalAlert').value) || 15,
+    mirageAlert: numf(document.getElementById('setMirageAlert').value) || 10,
+    tempTarget: numf(document.getElementById('setTemp').value) || 37.8,
+    humTarget: numf(document.getElementById('setHum').value) || 55,
+    incubationDays: num(document.getElementById('setDays').value) || 21
+  };
+  persist();
+  toast('Paramètres enregistrés ⚙️', 'success');
+  renderAll();
+}
+function resetSettings() {
+  if (!confirm('Réinitialiser tous les paramètres ?')) return;
+  settings = { ...DEFAULT_SETTINGS };
+  persist();
+  renderSettings();
+  renderAll();
+  toast('Paramètres réinitialisés', 'info');
+}
+function confirmClearData() {
+  if (!confirm('⚠️ Supprimer DÉFINITIVEMENT toutes vos données (lots, mesures, clients) ? Cette action est irréversible.')) return;
+  if (!confirm('Êtes-vous vraiment sûr ?')) return;
+  lots = []; incubEntries = []; clients = [];
+  persist();
+  renderAll();
+  toast('Toutes les données ont été effacées', 'warn');
+}
+
+/* ============================================================
+   EXPORT / IMPORT
+   ============================================================ */
+function exportData() {
+  const data = { lots, incubEntries, clients, settings, exportedAt: new Date().toISOString(), user: currentUser };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `couvease-backup-${currentUser}-${Date.now()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('Données exportées 💾', 'success');
+}
+function importData(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const d = JSON.parse(ev.target.result);
+      if (d.lots) lots = d.lots;
+      if (d.incubEntries) incubEntries = d.incubEntries;
+      if (d.clients) clients = d.clients;
+      if (d.settings) settings = { ...DEFAULT_SETTINGS, ...d.settings };
+      persist();
+      renderAll();
+      toast('Données importées avec succès 📂', 'success');
+    } catch (err) {
+      toast('Fichier invalide', 'error');
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+/* ============================================================
+   DEMO DATA
+   ============================================================ */
+function loadDemoData() {
+  if (lots.length && !confirm('Cela ajoutera des données de démo à vos données existantes. Continuer ?')) return;
+  const today = new Date();
+  const sub = (days) => { const d = new Date(today); d.setDate(d.getDate() - days); return fmtDateInput(d); };
+  const demo = [
+    { ref: 'L-2024-001', couveuse: 'Couveuse 1', race: 'Isa Brown', repro: 'Lot A', collecte: sub(35), incubation: sub(33), qty: 100, ponte: sub(35), fissure: 3, j7Clairs: 3, j7Mort: 2, j14Cont: 2, j14Mort: 5, eclMal: 2, eclMort: 3, cout: { oeufs: 30, energie: 18, aliment: 25, mo: 35 }, notes: 'Lot test, T° a chuté de 0.3°C la nuit du J12.' },
+    { ref: 'L-2024-002', couveuse: 'Couveuse 2', race: 'Isa Brown', repro: 'Lot A', collecte: sub(28), incubation: sub(26), qty: 80, ponte: sub(28), fissure: 2, j7Clairs: 4, j7Mort: 1, j14Cont: 1, j14Mort: 3, eclMal: 1, eclMort: 2, cout: { oeufs: 24, energie: 16, aliment: 20, mo: 30 }, notes: 'Bonne incubation.' },
+    { ref: 'L-2024-003', couveuse: 'Couveuse 1', race: 'Sussex', repro: 'Lot B', collecte: sub(20), incubation: sub(18), qty: 60, ponte: sub(20), fissure: 1, j7Clairs: 5, j7Mort: 3, j14Cont: 0, j14Mort: 2, eclMal: 0, eclMort: 1, cout: { oeufs: 22, energie: 12, aliment: 15, mo: 25 }, notes: '' },
+    { ref: 'L-2024-004', couveuse: 'Couveuse 2', race: 'Coucou de Rennes', repro: 'Lot C', collecte: sub(10), incubation: sub(8), qty: 50, ponte: sub(10), fissure: 0, j7Clairs: 2, j7Mort: 1, j14Cont: 0, j14Mort: 0, eclMal: 0, eclMort: 0, cout: { oeufs: 18, energie: 8, aliment: 10, mo: 18 }, notes: 'En cours d\'incubation.' },
+    { ref: 'L-2024-005', couveuse: 'Couveuse 3', race: 'Marans', repro: 'Lot D', collecte: sub(3), incubation: sub(1), qty: 40, ponte: sub(3), fissure: 0, j7Clairs: 0, j7Mort: 0, j14Cont: 0, j14Mort: 0, eclMal: 0, eclMort: 0, cout: { oeufs: 15, energie: 5, aliment: 5, mo: 12 }, notes: 'Lot tout frais, à surveiller.' }
+  ];
+  demo.forEach(d => { d.id = uid(); d.createdAt = Date.now(); lots.push(d); });
+  // demo incub entries
+  const entries = [];
+  for (let i = 0; i < 30; i++) {
+    const d = new Date(today); d.setDate(d.getDate() - i);
+    const dd = fmtDateInput(d);
+    entries.push({ id: uid(), date: dd, couveuse: 'Couveuse 1', temp: 37.7 + (Math.random() - 0.5) * 0.6, hum: 55 + Math.round((Math.random() - 0.5) * 8), notes: '' });
+    if (i % 2 === 0) entries.push({ id: uid(), date: dd, couveuse: 'Couveuse 2', temp: 37.8 + (Math.random() - 0.5) * 0.4, hum: 56 + Math.round((Math.random() - 0.5) * 6), notes: '' });
+  }
+  incubEntries.push(...entries);
+  // demo clients
+  clients.push(
+    { id: uid(), name: 'Jean Dupont', phone: '06 12 34 56 78', email: 'jean@example.com', lotId: lots[0].id, qty: 10, price: 4.5, status: 'delivered', date: sub(5), notes: '' },
+    { id: uid(), name: 'Marie Martin', phone: '07 23 45 67 89', email: '', lotId: lots[3].id, qty: 5, price: 5, status: 'reserved', date: '', notes: 'Pour la semaine prochaine' }
+  );
+  persist();
+  renderAll();
+  toast('Données de démo chargées 🧪', 'success');
+}
+
+/* ============================================================
+   PWA / SERVICE WORKER (best effort en single file)
+   ============================================================ */
+if ('serviceWorker' in navigator) {
+  // single-file approach: register a tiny inline service worker via Blob
+  try {
+    const swCode = `
+      const CACHE='couvease-v1';
+      self.addEventListener('install', e => self.skipWaiting());
+      self.addEventListener('activate', e => self.clients.claim());
+      self.addEventListener('fetch', e => {
+        if (e.request.method !== 'GET') return;
+        e.respondWith(
+          caches.open(CACHE).then(cache => cache.match(e.request).then(r => r || fetch(e.request).then(resp => {
+            if (resp.status === 200 && (e.request.url.startsWith(self.location.origin) || e.request.url.includes('cdn.jsdelivr') || e.request.url.includes('fonts.g'))) {
+              cache.put(e.request, resp.clone());
+            }
+            return resp;
+          }).catch(() => cache.match('/'))))
+        );
+      });
+    `;
+    const blob = new Blob([swCode], { type: 'application/javascript' });
+    const url = URL.createObjectURL(blob);
+    navigator.serviceWorker.register(url).catch(() => {});
+  } catch (e) { /* ignore */ }
+}
+
+/* ============================================================
+   BOOT
+   ============================================================ */
+window.addEventListener('DOMContentLoaded', () => {
+  if (loadState()) {
+    enterApp();
+  }
+  // close modals on overlay click
+  document.querySelectorAll('.modal-overlay').forEach(ov => {
+    ov.addEventListener('click', e => { if (e.target === ov) ov.style.display = 'none'; });
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = 'none');
+      closeLotPanel();
+    }
+  });
+});
+</script>
+</body>
+</html>
