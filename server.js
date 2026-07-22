@@ -1,5 +1,5 @@
 // ============================================================
-// SERVER.JS — Backend complet pour Tico Farm Manager SaaS
+// SERVER.JS — Backend complet avec création automatique des tables
 // ============================================================
 
 const express = require('express');
@@ -22,16 +22,113 @@ const pool = new Pool({
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 
-// Test de connexion à la base de données
-pool.connect()
-  .then(() => console.log('✅ Connecté à PostgreSQL'))
-  .catch(err => console.error('❌ Erreur de connexion PostgreSQL:', err));
+// ============================================================
+// Création automatique des tables (AJOUTÉ)
+// ============================================================
+async function initDatabase() {
+    try {
+        console.log('📦 Création des tables si elles n\'existent pas...');
+        
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS users (
+                id TEXT PRIMARY KEY,
+                first_name TEXT NOT NULL,
+                farm_name TEXT NOT NULL,
+                address TEXT,
+                password_hash TEXT NOT NULL,
+                species TEXT DEFAULT 'poule',
+                created_at TIMESTAMP DEFAULT NOW()
+            )
+        `);
+        
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS lots (
+                id TEXT PRIMARY KEY,
+                user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
+                lot_number TEXT,
+                incubator TEXT,
+                species TEXT,
+                breed TEXT,
+                origin TEXT,
+                breeder_lay_date DATE,
+                target_rate DECIMAL(5,2),
+                notes TEXT,
+                collection_date DATE,
+                collection_quantity INTEGER DEFAULT 0,
+                collection_cracked INTEGER DEFAULT 0,
+                collection_validated BOOLEAN DEFAULT FALSE,
+                incubation_date DATE,
+                incubation_validated BOOLEAN DEFAULT FALSE,
+                candling7_date DATE,
+                candling7_clear INTEGER DEFAULT 0,
+                candling7_mortality INTEGER DEFAULT 0,
+                candling7_validated BOOLEAN DEFAULT FALSE,
+                candling14_date DATE,
+                candling14_contaminated INTEGER DEFAULT 0,
+                candling14_mortality INTEGER DEFAULT 0,
+                candling14_validated BOOLEAN DEFAULT FALSE,
+                hatching_date DATE,
+                hatching_malformation INTEGER DEFAULT 0,
+                hatching_dead INTEGER DEFAULT 0,
+                hatching_validated BOOLEAN DEFAULT FALSE,
+                costs_eggs DECIMAL(10,2) DEFAULT 0,
+                costs_energy DECIMAL(10,2) DEFAULT 0,
+                costs_feed DECIMAL(10,2) DEFAULT 0,
+                costs_labor DECIMAL(10,2) DEFAULT 0,
+                created_at TIMESTAMP DEFAULT NOW()
+            )
+        `);
+        
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS clients (
+                id TEXT PRIMARY KEY,
+                user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
+                name TEXT NOT NULL,
+                contact TEXT,
+                chicks_ordered INTEGER DEFAULT 0,
+                total_amount DECIMAL(10,2) DEFAULT 0,
+                lot_id TEXT REFERENCES lots(id) ON DELETE SET NULL,
+                status TEXT DEFAULT 'reserved',
+                delivered_at TIMESTAMP,
+                created_at TIMESTAMP DEFAULT NOW()
+            )
+        `);
+        
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS temp_logs (
+                id TEXT PRIMARY KEY,
+                user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
+                lot_id TEXT REFERENCES lots(id) ON DELETE CASCADE,
+                date DATE NOT NULL,
+                temperature DECIMAL(4,1),
+                humidity INTEGER,
+                notes TEXT,
+                created_at TIMESTAMP DEFAULT NOW()
+            )
+        `);
+        
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS notifications (
+                id TEXT PRIMARY KEY,
+                user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
+                title TEXT NOT NULL,
+                text TEXT NOT NULL,
+                type TEXT DEFAULT 'info',
+                created_at TIMESTAMP DEFAULT NOW()
+            )
+        `);
+        
+        console.log('✅ Tables créées/vérifiées avec succès');
+    } catch (err) {
+        console.error('❌ Erreur lors de la création des tables:', err.message);
+    }
+}
 
 // ============================================================
 // Middleware
 // ============================================================
 app.use(helmet({
-  contentSecurityPolicy: false, // Désactivé pour simplifier
+  contentSecurityPolicy: false,
 }));
 app.use(cors({
   origin: process.env.FRONTEND_URL || '*',
@@ -70,7 +167,6 @@ app.post('/api/auth/register', async (req, res) => {
       return res.status(400).json({ error: 'Champs obligatoires manquants' });
     }
     
-    // Vérifier si l'utilisateur existe déjà
     const existing = await pool.query('SELECT id FROM users WHERE first_name = $1', [firstName]);
     if (existing.rows.length > 0) {
       return res.status(409).json({ error: 'Ce nom est déjà pris' });
@@ -92,7 +188,7 @@ app.post('/api/auth/register', async (req, res) => {
     });
   } catch (err) {
     console.error('Erreur inscription:', err);
-    res.status(500).json({ error: 'Erreur serveur' });
+    res.status(500).json({ error: 'Erreur serveur: ' + err.message });
   }
 });
 
@@ -160,7 +256,6 @@ app.get('/api/auth/me', authenticate, async (req, res) => {
 // ROUTES POUR LES LOTS
 // ============================================================
 
-// Obtenir tous les lots
 app.get('/api/lots', authenticate, async (req, res) => {
   try {
     const result = await pool.query(
@@ -174,7 +269,6 @@ app.get('/api/lots', authenticate, async (req, res) => {
   }
 });
 
-// Créer un lot
 app.post('/api/lots', authenticate, async (req, res) => {
   try {
     const {
@@ -227,12 +321,10 @@ app.post('/api/lots', authenticate, async (req, res) => {
   }
 });
 
-// Mettre à jour un lot
 app.put('/api/lots/:id', authenticate, async (req, res) => {
   try {
     const lotId = req.params.id;
     
-    // Vérifier l'appartenance
     const check = await pool.query('SELECT user_id FROM lots WHERE id = $1', [lotId]);
     if (check.rows.length === 0) {
       return res.status(404).json({ error: 'Lot non trouvé' });
@@ -286,7 +378,6 @@ app.put('/api/lots/:id', authenticate, async (req, res) => {
   }
 });
 
-// Supprimer un lot
 app.delete('/api/lots/:id', authenticate, async (req, res) => {
   try {
     const lotId = req.params.id;
@@ -500,7 +591,6 @@ app.delete('/api/notifications', authenticate, async (req, res) => {
 
 app.get('/api/stats', authenticate, async (req, res) => {
   try {
-    // On renvoie tous les lots, le client fera les calculs
     const result = await pool.query(
       'SELECT * FROM lots WHERE user_id = $1',
       [req.userId]
@@ -523,6 +613,13 @@ app.get('/api/health', (req, res) => {
 // ============================================================
 // DÉMARRAGE DU SERVEUR
 // ============================================================
+
+pool.connect()
+    .then(async () => {
+        console.log('✅ Connecté à PostgreSQL');
+        await initDatabase();
+    })
+    .catch(err => console.error('❌ Erreur de connexion PostgreSQL:', err));
 
 app.listen(PORT, () => {
   console.log(`🚀 Serveur Tico Farm démarré sur le port ${PORT}`);
