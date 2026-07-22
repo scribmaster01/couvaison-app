@@ -9,7 +9,7 @@
     </script>
     <style>
         /* ============================================================
-           TICO FARM MANAGER — DARK FUTURIST UI
+           TICO FARM MANAGER — DARK FUTURIST UI (COMPLET)
            ============================================================ */
         :root {
             --bg: #081624;
@@ -116,6 +116,7 @@
         ::-webkit-scrollbar-thumb:hover {
             background: var(--text-faint);
         }
+        /* Animations */
         @keyframes fadeIn {
             from {
                 opacity: 0;
@@ -2165,29 +2166,6 @@
 
     <script>
         // ============================================================
-        // API CONFIGURATION
-        // ============================================================
-        const API_BASE = 'https://tico-farm-backend.onrender.com/api';
-
-        async function apiFetch(endpoint, options = {}) {
-            const token = localStorage.getItem('token');
-            const headers = {
-                'Content-Type': 'application/json',
-                ...(token && { 'Authorization': `Bearer ${token}` }),
-                ...options.headers
-            };
-            const response = await fetch(`${API_BASE}${endpoint}`, {
-                ...options,
-                headers
-            });
-            if (!response.ok) {
-                const error = await response.json().catch(() => ({}));
-                throw new Error(error.error || 'Erreur API');
-            }
-            return response.json();
-        }
-
-        // ============================================================
         // SPECIES
         // ============================================================
         const SPECIES = {
@@ -2202,22 +2180,58 @@
         // ============================================================
         // STATE
         // ============================================================
-        let state = {
-            users: [],
-            currentUserId: null,
-            lots: [],
-            tempLogs: [],
-            clients: [],
-            settings: { targetRate: 85, mortalityThreshold: 15 },
-            notifications: []
-        };
+        let state = null;
+        const STORAGE_KEY = 'ticoFarmManager';
 
-        function generateId() {
-            return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+        function loadState() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (raw) {
+                    state = JSON.parse(raw);
+                    if (!state.users) state.users = [];
+                    if (!state.lots) state.lots = [];
+                    if (!state.tempLogs) state.tempLogs = [];
+                    if (!state.clients) state.clients = [];
+                    if (!state.settings) state.settings = { targetRate: 85, mortalityThreshold: 15 };
+                    if (!state.notifications) state.notifications = [];
+                    return true;
+                }
+            } catch (_) {}
+            return false;
+        }
+
+        function saveState() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        }
+
+        function getDefaultState() {
+            return { users: [], currentUserId: null, lots: [], tempLogs: [], clients: [], settings: { targetRate: 85,
+                    mortalityThreshold: 15 }, notifications: [] };
         }
 
         function getCurrentUser() {
+            if (!state || !state.currentUserId) return null;
             return state.users.find(u => u.id === state.currentUserId) || null;
+        }
+
+        function getUserLots(userId) {
+            return state.lots.filter(l => l.userId === userId);
+        }
+
+        function getUserClients(userId) {
+            return state.clients.filter(c => c.userId === userId);
+        }
+
+        function getUserTempLogs(userId) {
+            return state.tempLogs.filter(t => t.userId === userId);
+        }
+
+        function getNotifications(userId) {
+            return (state.notifications || []).filter(n => n.userId === userId);
+        }
+
+        function generateId() {
+            return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
         }
 
         // ============================================================
@@ -2236,26 +2250,18 @@
             const hatchMalformation = lot.hatchingMalformation || 0;
             const hatchDead = lot.hatchingDead || 0;
             const poussinsSains = Math.max(0, j14Bons - hatchMalformation - hatchDead);
+            const netInIncubation = Math.max(0, qty - cracked - j7Clear - j14Contaminated);
+            const totalLoss = qty - poussinsSains;
+            const lossMirage = j7Clear + j14Contaminated;
+            const mortalityTotal = cracked + j7Mortality + j14Mortality + hatchDead + hatchMalformation;
+            const hatchRate = qty > 0 ? (poussinsSains / qty) * 100 : 0;
+            const mortalityRate = qty > 0 ? (mortalityTotal / qty) * 100 : 0;
             const costs = lot.costs || { eggs: 0, energy: 0, feed: 0, labor: 0 };
             const totalCost = (costs.eggs || 0) + (costs.energy || 0) + (costs.feed || 0) + (costs.labor || 0);
             const costPerChick = poussinsSains > 0 ? totalCost / poussinsSains : 0;
-            return {
-                qty,
-                cracked,
-                bonAIntroduire,
-                j7Clear,
-                j7Mortality,
-                j7Fertilized,
-                j14Contaminated,
-                j14Mortality,
-                j14Bons,
-                hatchMalformation,
-                hatchDead,
-                poussinsSains,
-                totalCost,
-                costPerChick,
-                hatchRate: qty > 0 ? (poussinsSains / qty) * 100 : 0
-            };
+            return { qty, cracked, bonAIntroduire, j7Clear, j7Mortality, j7Fertilized, j14Contaminated, j14Mortality,
+                j14Bons, hatchMalformation, hatchDead, poussinsSains, netInIncubation, totalLoss, lossMirage,
+                mortalityTotal, hatchRate, mortalityRate, totalCost, costPerChick };
         }
 
         function getStage(lot) {
@@ -2313,6 +2319,82 @@
         }
 
         // ============================================================
+        // NOTIFICATIONS
+        // ============================================================
+        function addNotification(userId, title, text, type = 'info') {
+            if (!state.notifications) state.notifications = [];
+            state.notifications.push({
+                id: generateId(),
+                userId,
+                title,
+                text,
+                type,
+                createdAt: new Date().toISOString()
+            });
+            saveState();
+            updateNotifBadge();
+            renderNotifications();
+        }
+
+        function getActiveNotifications(userId) {
+            return getNotifications(userId) || [];
+        }
+
+        function updateNotifBadge() {
+            const user = getCurrentUser();
+            if (!user) return;
+            const active = getActiveNotifications(user.id);
+            const badge = document.getElementById('notifBadge');
+            const count = active.length;
+            if (count > 0) { badge.style.display = 'flex';
+                badge.textContent = count; } else { badge.style.display = 'none'; }
+            document.getElementById('notifCount').textContent = `${count} notification${count > 1 ? 's' : ''}`;
+        }
+
+        function renderNotifications() {
+            const user = getCurrentUser();
+            if (!user) return;
+            const list = document.getElementById('notifList');
+            const active = getActiveNotifications(user.id);
+            if (active.length === 0) {
+                list.innerHTML =
+                    '<div style="padding:16px;color:var(--text-soft);text-align:center;font-size:13px;">Aucune notification</div>';
+                return;
+            }
+            const sorted = [...active].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            list.innerHTML = sorted.map(n => {
+                const iconMap = { info: 'info', warn: 'warn', danger: 'danger', success: 'success',
+                    sale_delivered: 'success', stage: 'info', client: 'info' };
+                const icon = n.type === 'sale_delivered' ? 'check_circle' :
+                    n.type === 'stage' ? 'check_circle' :
+                    n.type === 'client' ? 'group' : 'notifications';
+                const cls = n.type === 'sale_delivered' || n.type === 'success' ? 'success' :
+                    n.type === 'warn' ? 'warn' :
+                    n.type === 'danger' ? 'danger' : 'info';
+                return `
+              <div class="notif-item">
+                <div class="notif-item-icon ${cls}"><span class="material-symbols-outlined">${icon}</span></div>
+                <div class="notif-item-content">
+                  <div class="notif-item-title">${n.title}</div>
+                  <div class="notif-item-text">${n.text}</div>
+                  <div class="notif-item-time">${formatDateTime(n.createdAt)}</div>
+                </div>
+              </div>
+            `;
+            }).join('');
+        }
+
+        document.getElementById('clearNotifBtn').addEventListener('click', function() {
+            const user = getCurrentUser();
+            if (!user) return;
+            state.notifications = state.notifications.filter(n => n.userId !== user.id);
+            saveState();
+            updateNotifBadge();
+            renderNotifications();
+            showToast('Notifications effacées', 'info');
+        });
+
+        // ============================================================
         // AUTH
         // ============================================================
         function setupAuth() {
@@ -2335,27 +2417,20 @@
             document.getElementById('regPassword').addEventListener('keydown', (e) => { if (e.key === 'Enter') doRegister(); });
         }
 
-        async function doLogin() {
+        function doLogin() {
             const username = document.getElementById('loginUsername').value.trim();
             const password = document.getElementById('loginPassword').value.trim();
             const err = document.getElementById('loginError');
             err.textContent = '';
             if (!username || !password) { err.textContent = 'Veuillez remplir tous les champs.'; return; }
-            try {
-                const data = await apiFetch('/auth/login', {
-                    method: 'POST',
-                    body: JSON.stringify({ firstName: username, password })
-                });
-                localStorage.setItem('token', data.token);
-                state.currentUserId = data.user.id;
-                state.users = [data.user];
-                enterApp();
-            } catch (error) {
-                err.textContent = error.message || 'Erreur de connexion';
-            }
+            const user = state.users.find(u => u.firstName === username && u.password === password);
+            if (!user) { err.textContent = 'Nom ou mot de passe incorrect.'; return; }
+            state.currentUserId = user.id;
+            saveState();
+            enterApp();
         }
 
-        async function doRegister() {
+        function doRegister() {
             const firstName = document.getElementById('regFirstName').value.trim();
             const farmName = document.getElementById('regFarmName').value.trim();
             const address = document.getElementById('regAddress').value.trim();
@@ -2364,18 +2439,13 @@
             const err = document.getElementById('registerError');
             err.textContent = '';
             if (!firstName || !farmName || !password) { err.textContent = 'Veuillez remplir tous les champs obligatoires.'; return; }
-            try {
-                const data = await apiFetch('/auth/register', {
-                    method: 'POST',
-                    body: JSON.stringify({ firstName, farmName, address, password, species })
-                });
-                localStorage.setItem('token', data.token);
-                state.currentUserId = data.user.id;
-                state.users = [data.user];
-                enterApp();
-            } catch (error) {
-                err.textContent = error.message || 'Erreur d\'inscription';
-            }
+            if (state.users.find(u => u.firstName === firstName)) { err.textContent = 'Ce nom est déjà pris.'; return; }
+            const user = { id: generateId(), firstName, farmName, address: address || '', password, createdAt: new Date()
+                    .toISOString(), species: species || 'poule' };
+            state.users.push(user);
+            state.currentUserId = user.id;
+            saveState();
+            enterApp();
         }
 
         function enterApp() {
@@ -2397,11 +2467,18 @@
         }
 
         function doLogout() {
-            localStorage.removeItem('token');
             state.currentUserId = null;
-            state.users = [];
+            saveState();
             document.getElementById('app').style.display = 'none';
             document.getElementById('authScreen').style.display = 'flex';
+            document.getElementById('loginUsername').value = '';
+            document.getElementById('loginPassword').value = '';
+            document.getElementById('loginError').textContent = '';
+            document.getElementById('regFirstName').value = '';
+            document.getElementById('regFarmName').value = '';
+            document.getElementById('regAddress').value = '';
+            document.getElementById('regPassword').value = '';
+            document.getElementById('registerError').textContent = '';
             closeModal();
             document.getElementById('subPageContainer').style.display = 'none';
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -2456,7 +2533,6 @@
         function startClock() {
             const clockEl = document.querySelector('#liveClock span');
             if (!clockEl) return;
-
             function update() {
                 const now = new Date();
                 clockEl.textContent = now.toLocaleString('fr-FR', {
@@ -2472,79 +2548,6 @@
             update();
             if (window.clockInterval) clearInterval(window.clockInterval);
             window.clockInterval = setInterval(update, 1000);
-        }
-
-        // ============================================================
-        // NOTIFICATIONS
-        // ============================================================
-        async function addNotification(title, text, type = 'info') {
-            try {
-                await apiFetch('/notifications', {
-                    method: 'POST',
-                    body: JSON.stringify({ title, text, type })
-                });
-            } catch (e) { console.error('Notification error:', e); }
-            updateNotifBadge();
-            renderNotifications();
-        }
-
-        function updateNotifBadge() {
-            const badge = document.getElementById('notifBadge');
-            const count = state.notifications.length;
-            if (count > 0) { badge.style.display = 'flex';
-                badge.textContent = count; } else { badge.style.display = 'none'; }
-            document.getElementById('notifCount').textContent = `${count} notification${count > 1 ? 's' : ''}`;
-        }
-
-        async function renderNotifications() {
-            try {
-                state.notifications = await apiFetch('/notifications');
-            } catch (e) { state.notifications = []; }
-            const list = document.getElementById('notifList');
-            if (state.notifications.length === 0) {
-                list.innerHTML =
-                    '<div style="padding:16px;color:var(--text-soft);text-align:center;font-size:13px;">Aucune notification</div>';
-                return;
-            }
-            list.innerHTML = state.notifications.map(n => `
-              <div class="notif-item">
-                <div class="notif-item-icon info"><span class="material-symbols-outlined">notifications</span></div>
-                <div class="notif-item-content">
-                  <div class="notif-item-title">${n.title}</div>
-                  <div class="notif-item-text">${n.text}</div>
-                  <div class="notif-item-time">${formatDateTime(n.created_at)}</div>
-                </div>
-              </div>
-            `).join('');
-            updateNotifBadge();
-        }
-
-        document.getElementById('clearNotifBtn').addEventListener('click', async function() {
-            try {
-                await apiFetch('/notifications', { method: 'DELETE' });
-                state.notifications = [];
-                renderNotifications();
-                showToast('Notifications effacées', 'info');
-            } catch (e) { showToast('Erreur', 'error'); }
-        });
-
-        // ============================================================
-        // DATA LOADING
-        // ============================================================
-        async function loadAllData() {
-            try {
-                const [lots, clients, tempLogs] = await Promise.all([
-                    apiFetch('/lots'),
-                    apiFetch('/clients'),
-                    apiFetch('/temp-logs')
-                ]);
-                state.lots = lots;
-                state.clients = clients;
-                state.tempLogs = tempLogs;
-                await renderNotifications();
-            } catch (e) {
-                console.error('Error loading data:', e);
-            }
         }
 
         // ============================================================
@@ -2580,7 +2583,7 @@
             const firstDay = new Date(year, month, 1).getDay();
             const daysInMonth = new Date(year, month + 1, 0).getDate();
             const today = now.getDate();
-            const lots = state.lots;
+            const lots = getUserLots(user.id);
             const events = {};
             lots.forEach(lot => {
                 if (lot.incubationDate && lot.incubationValidated) {
@@ -2668,8 +2671,8 @@
         let tempChartInstance = null;
 
         function renderTemperature(user) {
-            const logs = state.tempLogs;
-            const lots = state.lots;
+            const logs = getUserTempLogs(user.id);
+            const lots = getUserLots(user.id);
             let html = `
             <div class="card">
               <div class="card-header"><div class="card-title"><span class="material-symbols-outlined">thermostat</span> Saisir température / humidité</div></div>
@@ -2781,7 +2784,7 @@
         function bindTemperatureEvents() {
             const saveBtn = document.getElementById('tempSaveBtn');
             if (saveBtn) {
-                saveBtn.addEventListener('click', async () => {
+                saveBtn.addEventListener('click', () => {
                     const user = getCurrentUser();
                     if (!user) return;
                     const lotId = document.getElementById('tempLotSelect').value;
@@ -2792,38 +2795,35 @@
                     if (!lotId || !date) { showToast('Veuillez sélectionner un lot et une date.', 'error'); return; }
                     if (isNaN(temp) && isNaN(humidity)) { showToast(
                             'Veuillez renseigner au moins la température ou l\'humidité.', 'error'); return; }
-                    try {
-                        const data = await apiFetch('/temp-logs', {
-                            method: 'POST',
-                            body: JSON.stringify({ lotId, date, temperature: isNaN(temp) ? null : temp,
-                                humidity: isNaN(humidity) ? null : humidity, notes: notes || '' })
-                        });
-                        state.tempLogs.push(data);
-                        showToast('Donnée enregistrée !', 'success');
-                        renderSubPage('temperature');
-                        bindTemperatureEvents();
-                    } catch (e) { showToast('Erreur', 'error'); }
+                    state.tempLogs.push({ id: generateId(), userId: user.id, lotId, date, temperature: isNaN(temp) ?
+                            null : temp, humidity: isNaN(humidity) ? null : humidity, notes: notes || '' });
+                    saveState();
+                    addNotification(user.id, 'Température enregistrée',
+                        `Lot ${lotId.slice(0,4)} · ${temp}°C / ${humidity}%`, 'info');
+                    showToast('Donnée enregistrée !', 'success');
+                    renderSubPage('temperature');
+                    bindTemperatureEvents();
                 });
             }
             document.querySelectorAll('.delete-temp-btn').forEach(btn => {
-                btn.addEventListener('click', async function() {
+                btn.addEventListener('click', function() {
                     const id = this.dataset.id;
+                    const user = getCurrentUser();
+                    if (!user) return;
                     if (!confirm('Supprimer cette entrée ?')) return;
-                    try {
-                        await apiFetch(`/temp-logs/${id}`, { method: 'DELETE' });
-                        state.tempLogs = state.tempLogs.filter(t => t.id !== id);
-                        renderSubPage('temperature');
-                        bindTemperatureEvents();
-                    } catch (e) { showToast('Erreur', 'error'); }
+                    state.tempLogs = state.tempLogs.filter(t => !(t.id === id && t.userId === user.id));
+                    saveState();
+                    renderSubPage('temperature');
+                    bindTemperatureEvents();
                 });
             });
         }
 
         // ============================================================
-        // RENDER: COSTS PAGE
+        // RENDER: COSTS PAGE - CARD LAYOUT
         // ============================================================
         function renderCostsPage(user) {
-            const lots = state.lots;
+            const lots = getUserLots(user.id);
             let globalTotalCost = 0;
             let globalTotalChicks = 0;
             lots.forEach(lot => {
@@ -2881,6 +2881,7 @@
         }
 
         function bindCostsEvents() {
+            // Mise à jour dynamique du résumé dans chaque carte
             document.querySelectorAll('.cost-card').forEach(card => {
                 const lotId = card.dataset.lotId;
                 const inputs = card.querySelectorAll('.cost-field');
@@ -2907,8 +2908,9 @@
                 });
             });
 
+            // Sauvegarde d'une carte
             document.querySelectorAll('.save-cost-card-btn').forEach(btn => {
-                btn.addEventListener('click', async function() {
+                btn.addEventListener('click', function() {
                     const lotId = this.dataset.lot;
                     const card = this.closest('.cost-card');
                     const inputs = card.querySelectorAll('.cost-field');
@@ -2919,34 +2921,33 @@
                     const lot = state.lots.find(l => l.id === lotId);
                     if (lot) {
                         lot.costs = costs;
-                        try {
-                            await apiFetch(`/lots/${lotId}`, {
-                                method: 'PUT',
-                                body: JSON.stringify({ ...lot, costs })
-                            });
-                            showToast('Coûts mis à jour', 'success');
-                            renderSubPage('costs');
-                            bindCostsEvents();
-                        } catch (e) { showToast('Erreur', 'error'); }
+                        saveState();
+                        showToast('Coûts mis à jour pour le lot ' + (lot.lotNumber || lotId.slice(0, 4)),
+                            'success');
+                        addNotification(lot.userId, 'Coûts modifiés',
+                            `Lot ${lot.lotNumber || 'N°'+lot.id.slice(0,4)} : coûts mis à jour`, 'info');
+                        renderSubPage('costs');
+                        bindCostsEvents();
                     }
                 });
             });
 
+            // Suppression d'un lot
             document.querySelectorAll('.delete-lot-btn').forEach(btn => {
-                btn.addEventListener('click', async function() {
+                btn.addEventListener('click', function() {
                     const lotId = this.dataset.lot;
                     const lot = state.lots.find(l => l.id === lotId);
                     if (!lot) return;
                     if (!confirm(`Supprimer définitivement le lot "${lot.lotNumber || 'N°'+lot.id.slice(0,4)}" ?`))
                         return;
-                    try {
-                        await apiFetch(`/lots/${lotId}`, { method: 'DELETE' });
-                        state.lots = state.lots.filter(l => l.id !== lotId);
-                        showToast('Lot supprimé', 'warning');
-                        renderSubPage('costs');
-                        bindCostsEvents();
-                        refreshAll();
-                    } catch (e) { showToast('Erreur', 'error'); }
+                    state.lots = state.lots.filter(l => l.id !== lotId);
+                    saveState();
+                    showToast('Lot supprimé', 'warning');
+                    addNotification(lot.userId, 'Lot supprimé',
+                        `Lot ${lot.lotNumber || 'N°'+lot.id.slice(0,4)} a été supprimé`, 'danger');
+                    renderSubPage('costs');
+                    bindCostsEvents();
+                    refreshAll();
                 });
             });
         }
@@ -2955,8 +2956,8 @@
         // RENDER: CLIENTS
         // ============================================================
         function renderClientsPage(user) {
-            const clients = state.clients;
-            const lots = state.lots;
+            const clients = getUserClients(user.id);
+            const lots = getUserLots(user.id);
             let pendingTotal = 0,
                 pendingChicks = 0,
                 finalizedTotal = 0,
@@ -3043,7 +3044,7 @@
 
             const addBtn = document.getElementById('addClientBtn');
             if (addBtn) {
-                addBtn.addEventListener('click', async () => {
+                addBtn.addEventListener('click', () => {
                     const user = getCurrentUser();
                     if (!user) return;
                     const name = document.getElementById('clientName').value.trim();
@@ -3062,8 +3063,8 @@
                         if (lot) {
                             const calc = calcLot(lot);
                             const available = calc.poussinsSains;
-                            const alreadyOrdered = state.clients.filter(c => c.lotId === lotId).reduce((sum, c) => sum + (c
-                                .chicksOrdered || 0), 0);
+                            const alreadyOrdered = state.clients.filter(c => c.lotId === lotId && c.id !== (editingClientId ||
+                                null)).reduce((sum, c) => sum + (c.chicksOrdered || 0), 0);
                             if (qty + alreadyOrdered > available) {
                                 msg.textContent =
                                     `Quantité disponible : ${available - alreadyOrdered} poussins (déjà ${alreadyOrdered} commandés)`;
@@ -3071,59 +3072,74 @@
                             }
                         }
                     }
-                    try {
-                        const data = await apiFetch('/clients', {
-                            method: 'POST',
-                            body: JSON.stringify({ name, contact, chicksOrdered: qty, totalAmount: totalAuto,
-                                lotId, status, deliveredAt: status === 'delivered' ? new Date().toISOString() :
-                                    null })
-                        });
-                        state.clients.push(data);
+                    const client = {
+                        id: generateId(),
+                        userId: user.id,
+                        createdAt: new Date().toISOString(),
+                        name,
+                        contact: contact || '',
+                        chicksOrdered: qty,
+                        totalAmount: totalAuto,
+                        lotId,
+                        status,
+                        deliveredAt: status === 'delivered' ? new Date().toISOString() : null
+                    };
+                    state.clients.push(client);
+                    saveState();
+                    addNotification(user.id, 'Client ajouté', `${name} · ${qty} poussins · ${totalAuto.toLocaleString()} F`,
+                        'client');
+                    if (status === 'delivered') {
+                        addNotification(user.id, 'Vente terminée',
+                            `${name} · ${qty} poussins · ${totalAuto.toLocaleString()} F`, 'sale_delivered');
+                        showToast(`Client ${name} marqué comme livré.`, 'success');
+                    } else {
                         showToast(`Client ${name} ajouté avec succès.`, 'success');
-                        renderSubPage('clients');
-                        bindClientEvents();
-                        updateNotifBadge();
-                        renderNotifications();
-                    } catch (e) { showToast('Erreur', 'error'); }
+                    }
+                    renderSubPage('clients');
+                    bindClientEvents();
+                    updateNotifBadge();
+                    renderNotifications();
                 });
             }
 
             document.querySelectorAll('.client-status-select').forEach(sel => {
-                sel.addEventListener('change', async function() {
-                    const id = this.dataset.id;
-                    const newStatus = this.value;
+                sel.addEventListener('change', (e) => {
+                    const id = e.target.dataset.id;
+                    const newStatus = e.target.value;
                     const user = getCurrentUser();
                     if (!user) return;
-                    const client = state.clients.find(c => c.id === id);
+                    const client = state.clients.find(c => c.id === id && c.userId === user.id);
                     if (!client) return;
                     const oldStatus = client.status;
                     client.status = newStatus;
                     if (newStatus === 'delivered' && oldStatus !== 'delivered') {
                         client.deliveredAt = new Date().toISOString();
+                        addNotification(user.id, 'Vente terminée',
+                            `${client.name} · ${client.chicksOrdered || 0} poussins · ${(client.totalAmount || 0).toLocaleString()} F`,
+                            'sale_delivered');
+                        showToast(`Vente terminée pour ${client.name}.`, 'success');
+                    } else {
+                        addNotification(user.id, 'Statut client modifié',
+                            `${client.name} : ${oldStatus} → ${newStatus}`, 'info');
                     }
-                    try {
-                        await apiFetch(`/clients/${id}`, {
-                            method: 'PUT',
-                            body: JSON.stringify(client)
-                        });
-                        renderSubPage('clients');
-                        bindClientEvents();
-                        updateNotifBadge();
-                        renderNotifications();
-                    } catch (e) { showToast('Erreur', 'error'); }
+                    saveState();
+                    renderSubPage('clients');
+                    bindClientEvents();
+                    updateNotifBadge();
+                    renderNotifications();
                 });
             });
 
             document.querySelectorAll('.client-delete-btn').forEach(btn => {
-                btn.addEventListener('click', async function() {
-                    const id = this.dataset.id;
+                btn.addEventListener('click', (e) => {
+                    const id = e.target.dataset.id;
+                    const user = getCurrentUser();
+                    if (!user) return;
                     if (!confirm('Supprimer ce client ?')) return;
-                    try {
-                        await apiFetch(`/clients/${id}`, { method: 'DELETE' });
-                        state.clients = state.clients.filter(c => c.id !== id);
-                        renderSubPage('clients');
-                        bindClientEvents();
-                    } catch (e) { showToast('Erreur', 'error'); }
+                    state.clients = state.clients.filter(c => !(c.id === id && c.userId === user.id));
+                    saveState();
+                    renderSubPage('clients');
+                    bindClientEvents();
                 });
             });
         }
@@ -3166,16 +3182,19 @@
                     const threshold = parseFloat(document.getElementById('settingMortalityThreshold').value) || 15;
                     state.settings.targetRate = target;
                     state.settings.mortalityThreshold = threshold;
+                    saveState();
                     showToast('Réglages enregistrés.', 'success');
                 });
             }
         }
 
         // ============================================================
-        // DASHBOARD
+        // DASHBOARD, EGGS, INCUBATIONS, HATCHINGS, STATS
         // ============================================================
         function refreshDashboard() {
-            const lots = state.lots;
+            const user = getCurrentUser();
+            if (!user) return;
+            const lots = getUserLots(user.id);
             let totalEggs = 0,
                 totalIncubation = 0,
                 totalHatched = 0,
@@ -3286,14 +3305,13 @@
             }
         }
 
-        // ============================================================
-        // EGGS, INCUBATIONS, HATCHINGS, STATS (simplifiés)
-        // ============================================================
         let eggsChartInstance = null;
         let eggsFilter = 'all';
 
         function refreshEggs() {
-            const lots = state.lots;
+            const user = getCurrentUser();
+            if (!user) return;
+            const lots = getUserLots(user.id);
             let filtered = [];
             if (eggsFilter === 'all') {
                 filtered = lots.filter(l => l.collectionValidated || isInIncubationWide(l));
@@ -3356,13 +3374,15 @@
                 ctx.textAlign = 'center';
                 ctx.fillText('Aucune donnée à afficher', w / 2, h / 2);
             }
-            renderLotList(filtered, document.getElementById('eggsList'));
+            renderLotList(filtered, document.getElementById('eggsList'), user);
         }
 
         let incubFilter = 'all';
 
         function refreshIncubations() {
-            const lots = state.lots;
+            const user = getCurrentUser();
+            if (!user) return;
+            const lots = getUserLots(user.id);
             let filtered = [];
             if (incubFilter === 'all' || incubFilter === 'incubation') {
                 filtered = lots.filter(l => isInIncubationWide(l));
@@ -3376,13 +3396,15 @@
                 const db = getHatchDate(b);
                 return (da ? da.getTime() : Infinity) - (db ? db.getTime() : Infinity);
             });
-            renderLotList(filtered, document.getElementById('incubList'));
+            renderLotList(filtered, document.getElementById('incubList'), user);
         }
 
         let hatchFilter = 'all';
 
         function refreshHatchings() {
-            const lots = state.lots;
+            const user = getCurrentUser();
+            if (!user) return;
+            const lots = getUserLots(user.id);
             let filtered = [];
             if (hatchFilter === 'all') {
                 filtered = lots.filter(l => l.incubationValidated && l.hatchingValidated !== undefined);
@@ -3399,10 +3421,11 @@
                 const db = getHatchDate(b);
                 return (da ? da.getTime() : Infinity) - (db ? db.getTime() : Infinity);
             });
-            renderLotList(filtered, document.getElementById('hatchList'));
+            renderLotList(filtered, document.getElementById('hatchList'), user);
         }
 
-        function renderLotList(lots, container) {
+        function renderLotList(lots, container, user) {
+            if (!user) return;
             if (lots.length === 0) {
                 container.innerHTML =
                     `<div class="empty"><div class="empty-icon"><span class="material-symbols-outlined">inbox</span></div><div class="empty-title">Aucun lot</div><div class="empty-text">Créez votre premier lot avec le bouton +.</div></div>`;
@@ -3466,7 +3489,9 @@
         let statsChartInstance = null;
 
         function refreshStats() {
-            const lots = state.lots;
+            const user = getCurrentUser();
+            if (!user) return;
+            const lots = getUserLots(user.id);
             const completed = lots.filter(l => l.hatchingValidated);
             let totalRate = 0,
                 totalMortality = 0,
@@ -3487,7 +3512,6 @@
             document.getElementById('kpiMortality').textContent = avgMortality > 0 ? avgMortality.toFixed(1) + '%' : '0%';
             document.getElementById('kpiTotalChicks').textContent = totalChicks;
             document.getElementById('kpiLotsDone').textContent = completed.length;
-
             const sorted = [...completed].sort((a, b) => {
                 return new Date(a.hatchingDate || a.incubationDate || 0) - new Date(b.hatchingDate || b.incubationDate || 0);
             });
@@ -3496,7 +3520,6 @@
                 const calc = calcLot(l);
                 return calc.hatchRate;
             });
-
             if (statsChartInstance) {
                 statsChartInstance.destroy();
                 statsChartInstance = null;
@@ -3540,8 +3563,6 @@
                 ctx.textAlign = 'center';
                 ctx.fillText('Aucune donnée', w / 2, h / 2);
             }
-
-            // Performance par couveuse
             const incubMap = {};
             completed.forEach(l => {
                 const key = l.incubator || 'Sans nom';
@@ -3559,7 +3580,6 @@
             }).join('');
             document.getElementById('perfIncubator').innerHTML = incubHtml ||
                 '<div class="empty-text" style="padding:8px 0;">Aucune donnée</div>';
-
             const originMap = {};
             completed.forEach(l => {
                 const key = l.origin || 'Inconnu';
@@ -3582,8 +3602,7 @@
         // ============================================================
         // REFRESH ALL
         // ============================================================
-        async function refreshAll() {
-            await loadAllData();
+        function refreshAll() {
             refreshDashboard();
             refreshEggs();
             refreshIncubations();
@@ -3594,7 +3613,7 @@
         }
 
         // ============================================================
-        // MODAL - LOT CREATION
+        // MODAL COMPLET - CORRECTION DE LA CRÉATION DE LOT
         // ============================================================
         let editingLotId = null;
         let modalCurrentTab = 0;
@@ -3620,22 +3639,25 @@
 
         function getLotData() {
             if (editingLotId) {
-                return state.lots.find(l => l.id === editingLotId) || null;
+                const user = getCurrentUser();
+                if (!user) return null;
+                return state.lots.find(l => l.id === editingLotId && l.userId === user.id) || null;
             }
             return null;
         }
 
         function getOrCreateLot() {
+            const user = getCurrentUser();
+            if (!user) return null;
             let lot = getLotData();
             if (!lot && !editingLotId) {
-                const user = getCurrentUser();
                 lot = {
                     id: generateId(),
-                    userId: user?.id || '',
+                    userId: user.id,
                     createdAt: new Date().toISOString(),
                     lotNumber: '',
                     incubator: '',
-                    species: user?.species || 'poule',
+                    species: user.species || 'poule',
                     breed: '',
                     origin: '',
                     breederLayDate: '',
@@ -3662,7 +3684,10 @@
                     costs: { eggs: 0, energy: 0, feed: 0, labor: 0 }
                 };
                 state.lots.push(lot);
+                saveState();
                 editingLotId = lot.id;
+                addNotification(user.id, 'Nouveau lot créé',
+                    `Lot ${lot.lotNumber || 'N°'+lot.id.slice(0,4)} créé avec succès`, 'success');
             }
             return lot;
         }
@@ -3678,6 +3703,7 @@
 
             let html = '';
 
+            // Onglet 0 : Infos
             if (tabIndex === 0) {
                 const speciesOptions = Object.entries(SPECIES).map(([key, val]) =>
                     `<option value="${key}" ${lot.species === key ? 'selected' : ''}>${val.emoji} ${val.name} (${val.days} j)</option>`
@@ -3699,7 +3725,9 @@
                     <div class="field"><label>Notes</label><textarea id="lotNotes" rows="2">${lot.notes || ''}</textarea></div>
                 </div>
             `;
-            } else if (tabIndex === 1) {
+            }
+            // Onglet 1 : Collecte
+            else if (tabIndex === 1) {
                 const disabled = lot.collectionValidated ? 'disabled' : '';
                 const isLocked = lot.collectionValidated;
                 html = `
@@ -3720,7 +3748,9 @@
                     ${isLocked ? `<button class="btn btn-outline btn-block" id="unlockCollecte">Modifier</button>` : ''}
                 </div>
             `;
-            } else if (tabIndex === 2) {
+            }
+            // Onglet 2 : Incubation
+            else if (tabIndex === 2) {
                 const disabled = lot.incubationValidated ? 'disabled' : '';
                 const isLocked = lot.incubationValidated;
                 const hatchDate = getHatchDate(lot);
@@ -3753,7 +3783,9 @@
                     ${isLocked ? `<button class="btn btn-outline btn-block" id="unlockIncubation">Modifier</button>` : ''}
                 </div>
             `;
-            } else if (tabIndex === 3) {
+            }
+            // Onglet 3 : J7
+            else if (tabIndex === 3) {
                 const disabled = lot.candling7Validated ? 'disabled' : '';
                 const isLocked = lot.candling7Validated;
                 html = `
@@ -3774,7 +3806,9 @@
                     ${isLocked ? `<button class="btn btn-outline btn-block" id="unlockJ7">Modifier</button>` : ''}
                 </div>
             `;
-            } else if (tabIndex === 4) {
+            }
+            // Onglet 4 : J14
+            else if (tabIndex === 4) {
                 const disabled = lot.candling14Validated ? 'disabled' : '';
                 const isLocked = lot.candling14Validated;
                 html = `
@@ -3795,7 +3829,9 @@
                     ${isLocked ? `<button class="btn btn-outline btn-block" id="unlockJ14">Modifier</button>` : ''}
                 </div>
             `;
-            } else if (tabIndex === 5) {
+            }
+            // Onglet 5 : Éclosion
+            else if (tabIndex === 5) {
                 const disabled = lot.hatchingValidated ? 'disabled' : '';
                 const isLocked = lot.hatchingValidated;
                 html = `
@@ -3816,7 +3852,9 @@
                     ${isLocked ? `<button class="btn btn-outline btn-block" id="unlockHatching">Modifier</button>` : ''}
                 </div>
             `;
-            } else if (tabIndex === 6) {
+            }
+            // Onglet 6 : Coûts
+            else if (tabIndex === 6) {
                 const costs = lot.costs || { eggs: 0, energy: 0, feed: 0, labor: 0 };
                 html = `
                 <div class="stage active">
@@ -3837,7 +3875,9 @@
                     </div>
                 </div>
             `;
-            } else if (tabIndex === 7) {
+            }
+            // Onglet 7 : Résultat
+            else if (tabIndex === 7) {
                 const totalCost = calc.totalCost;
                 const costPer = calc.costPerChick;
                 html = `
@@ -3904,6 +3944,7 @@
             const lot = getLotData();
             if (!lot) return;
 
+            // Validation des onglets (Collecte, Incubation, J7, J14, Éclosion)
             if (tabIndex === 1) {
                 const btn = document.getElementById('validateCollecte');
                 if (btn) btn.addEventListener('click', () => {
@@ -3915,6 +3956,8 @@
                     lot.collectionQuantity = qty;
                     lot.collectionCracked = cracked;
                     lot.collectionValidated = true;
+                    saveState();
+                    addNotification(lot.userId, 'Collecte validée', `Lot ${lot.lotNumber || 'N°'+lot.id.slice(0,4)} : collecte validée`, 'stage');
                     showToast('Collecte validée !', 'success');
                     renderModalTab(tabIndex);
                     refreshAll();
@@ -3922,6 +3965,7 @@
                 const unlock = document.getElementById('unlockCollecte');
                 if (unlock) unlock.addEventListener('click', () => {
                     lot.collectionValidated = false;
+                    saveState();
                     renderModalTab(tabIndex);
                 });
             }
@@ -3933,6 +3977,8 @@
                     if (!date) { showToast('Veuillez renseigner la date d\'incubation.', 'error'); return; }
                     lot.incubationDate = date;
                     lot.incubationValidated = true;
+                    saveState();
+                    addNotification(lot.userId, 'Incubation validée', `Lot ${lot.lotNumber || 'N°'+lot.id.slice(0,4)} : incubation démarrée`, 'stage');
                     showToast('Incubation validée !', 'success');
                     renderModalTab(tabIndex);
                     refreshAll();
@@ -3940,6 +3986,7 @@
                 const unlock = document.getElementById('unlockIncubation');
                 if (unlock) unlock.addEventListener('click', () => {
                     lot.incubationValidated = false;
+                    saveState();
                     renderModalTab(tabIndex);
                 });
             }
@@ -3955,6 +4002,8 @@
                     lot.candling7Clear = clear;
                     lot.candling7Mortality = mortality;
                     lot.candling7Validated = true;
+                    saveState();
+                    addNotification(lot.userId, 'Mirage J7 validé', `Lot ${lot.lotNumber || 'N°'+lot.id.slice(0,4)} : mirage J7 effectué`, 'stage');
                     showToast('Mirage J7 validé !', 'success');
                     renderModalTab(tabIndex);
                     refreshAll();
@@ -3962,6 +4011,7 @@
                 const unlock = document.getElementById('unlockJ7');
                 if (unlock) unlock.addEventListener('click', () => {
                     lot.candling7Validated = false;
+                    saveState();
                     renderModalTab(tabIndex);
                 });
             }
@@ -3977,6 +4027,8 @@
                     lot.candling14Contaminated = contaminated;
                     lot.candling14Mortality = mortality;
                     lot.candling14Validated = true;
+                    saveState();
+                    addNotification(lot.userId, 'Mirage J14 validé', `Lot ${lot.lotNumber || 'N°'+lot.id.slice(0,4)} : mirage J14 effectué`, 'stage');
                     showToast('Mirage J14 validé !', 'success');
                     renderModalTab(tabIndex);
                     refreshAll();
@@ -3984,6 +4036,7 @@
                 const unlock = document.getElementById('unlockJ14');
                 if (unlock) unlock.addEventListener('click', () => {
                     lot.candling14Validated = false;
+                    saveState();
                     renderModalTab(tabIndex);
                 });
             }
@@ -3999,6 +4052,8 @@
                     lot.hatchingMalformation = malformation;
                     lot.hatchingDead = dead;
                     lot.hatchingValidated = true;
+                    saveState();
+                    addNotification(lot.userId, 'Éclosion validée', `Lot ${lot.lotNumber || 'N°'+lot.id.slice(0,4)} : éclosion terminée`, 'success');
                     showToast('Éclosion validée ! 🎉', 'success');
                     renderModalTab(tabIndex);
                     refreshAll();
@@ -4006,10 +4061,12 @@
                 const unlock = document.getElementById('unlockHatching');
                 if (unlock) unlock.addEventListener('click', () => {
                     lot.hatchingValidated = false;
+                    saveState();
                     renderModalTab(tabIndex);
                 });
             }
 
+            // Onglet Coûts : auto-sauvegarde à la saisie
             if (tabIndex === 6) {
                 const costFields = ['costEggs', 'costEnergy', 'costFeed', 'costLabor'];
                 costFields.forEach(id => {
@@ -4019,13 +4076,12 @@
                             if (!lot.costs) lot.costs = { eggs: 0, energy: 0, feed: 0, labor: 0 };
                             const key = id.replace('cost', '').toLowerCase();
                             lot.costs[key] = parseFloat(el.value) || 0;
+                            saveState();
                             const calc = calcLot(lot);
-                            const totalCost = (lot.costs.eggs || 0) + (lot.costs.energy || 0) + (lot.costs.feed ||
-                                0) + (lot.costs.labor || 0);
+                            const totalCost = (lot.costs.eggs || 0) + (lot.costs.energy || 0) + (lot.costs.feed || 0) + (lot.costs.labor || 0);
                             document.querySelectorAll('.computed-value').forEach((el, idx) => {
                                 if (idx === 0) el.textContent = totalCost.toFixed(2) + ' F';
-                                else if (idx === 1) el.textContent = calc.costPerChick > 0 ? calc
-                                    .costPerChick.toFixed(2) + ' F' : '—';
+                                else if (idx === 1) el.textContent = calc.costPerChick > 0 ? calc.costPerChick.toFixed(2) + ' F' : '—';
                                 else if (idx === 2) el.textContent = calc.poussinsSains;
                             });
                         });
@@ -4033,36 +4089,25 @@
                 });
             }
 
+            // Onglet Infos : auto-sauvegarde
             if (tabIndex === 0) {
-                const fields = ['lotNumber', 'lotIncubator', 'lotSpecies', 'lotBreed', 'lotOrigin', 'lotBreederLayDate',
-                    'lotTargetRate', 'lotNotes'
-                ];
+                const fields = ['lotNumber', 'lotIncubator', 'lotSpecies', 'lotBreed', 'lotOrigin', 'lotBreederLayDate', 'lotTargetRate', 'lotNotes'];
                 fields.forEach(id => {
                     const el = document.getElementById(id);
                     if (el) {
                         el.addEventListener('change', () => {
-                            if (id === 'lotSpecies') {
-                                lot.species = el.value;
-                            } else if (id === 'lotNumber') {
-                                lot.lotNumber = el.value;
-                            } else if (id === 'lotIncubator') {
-                                lot.incubator = el.value;
-                            } else if (id === 'lotBreed') {
-                                lot.breed = el.value;
-                            } else if (id === 'lotOrigin') {
-                                lot.origin = el.value;
-                            } else if (id === 'lotBreederLayDate') {
-                                lot.breederLayDate = el.value;
-                            } else if (id === 'lotTargetRate') {
-                                lot.targetRate = parseFloat(el.value) || 85;
-                            } else if (id === 'lotNotes') {
-                                lot.notes = el.value;
-                            }
+                            if (id === 'lotSpecies') lot.species = el.value;
+                            else if (id === 'lotNumber') lot.lotNumber = el.value;
+                            else if (id === 'lotIncubator') lot.incubator = el.value;
+                            else if (id === 'lotBreed') lot.breed = el.value;
+                            else if (id === 'lotOrigin') lot.origin = el.value;
+                            else if (id === 'lotBreederLayDate') lot.breederLayDate = el.value;
+                            else if (id === 'lotTargetRate') lot.targetRate = parseFloat(el.value) || 85;
+                            else if (id === 'lotNotes') lot.notes = el.value;
+                            saveState();
                         });
                         if (id !== 'lotNotes') {
-                            el.addEventListener('input', () => {
-                                el.dispatchEvent(new Event('change'));
-                            });
+                            el.addEventListener('input', () => el.dispatchEvent(new Event('change')));
                         }
                     }
                 });
@@ -4076,25 +4121,25 @@
             });
             document.getElementById('modalPrev').addEventListener('click', () => {
                 if (modalCurrentTab > 0) {
-                    saveModalData();
+                    saveCurrentTabData();
                     renderModalTab(modalCurrentTab - 1);
                 }
             });
-            document.getElementById('modalNext').addEventListener('click', async () => {
-                await saveModalData();
+            document.getElementById('modalNext').addEventListener('click', () => {
+                saveCurrentTabData();
                 if (modalCurrentTab < 7) {
                     renderModalTab(modalCurrentTab + 1);
                 }
             });
-            document.getElementById('modalSave').addEventListener('click', async () => {
-                await saveModalData();
+            document.getElementById('modalSave').addEventListener('click', () => {
+                saveCurrentTabData();
                 closeModal();
                 refreshAll();
                 showToast('Lot enregistré !', 'success');
             });
             document.querySelectorAll('.modal-tab').forEach((tab, i) => {
                 tab.addEventListener('click', () => {
-                    saveModalData();
+                    saveCurrentTabData();
                     renderModalTab(i);
                 });
             });
@@ -4102,77 +4147,53 @@
                 if (!document.getElementById('lotModal').classList.contains('show')) return;
                 if (e.key === 'Escape') closeModal();
                 if (e.key === 'ArrowRight') {
-                    saveModalData();
+                    saveCurrentTabData();
                     if (modalCurrentTab < 7) renderModalTab(modalCurrentTab + 1);
                 }
                 if (e.key === 'ArrowLeft') {
-                    saveModalData();
+                    saveCurrentTabData();
                     if (modalCurrentTab > 0) renderModalTab(modalCurrentTab - 1);
                 }
             });
         }
 
-        async function saveModalData() {
+        function saveCurrentTabData() {
             const lot = getLotData();
-            if (!lot) return;
-            try {
-                if (lot.id && state.lots.some(l => l.id === lot.id)) {
-                    await apiFetch(`/lots/${lot.id}`, {
-                        method: 'PUT',
-                        body: JSON.stringify(lot)
-                    });
-                } else {
-                    const data = await apiFetch('/lots', {
-                        method: 'POST',
-                        body: JSON.stringify(lot)
-                    });
-                    lot.id = data.id;
-                }
-            } catch (e) {
-                console.error('Save error:', e);
-            }
+            if (lot) saveState();
         }
 
         // ============================================================
         // DATA MANAGEMENT
         // ============================================================
         function setupDataManagement() {
-            document.getElementById('exportDataBtn').addEventListener('click', async () => {
-                try {
-                    const data = await apiFetch('/lots');
-                    const dataStr = JSON.stringify(data, null, 2);
-                    const blob = new Blob([dataStr], { type: 'application/json' });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `tico_farm_data_${new Date().toISOString().slice(0,10)}.json`;
-                    a.click();
-                    URL.revokeObjectURL(url);
-                    showToast('Données exportées', 'success');
-                } catch (e) { showToast('Erreur', 'error'); }
+            document.getElementById('exportDataBtn').addEventListener('click', () => {
+                const dataStr = JSON.stringify(state, null, 2);
+                const blob = new Blob([dataStr], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `tico_farm_data_${new Date().toISOString().slice(0,10)}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+                showToast('Données exportées', 'success');
             });
 
             document.getElementById('importFileInput').addEventListener('change', function(e) {
                 const file = this.files[0];
                 if (!file) return;
                 const reader = new FileReader();
-                reader.onload = async function(ev) {
+                reader.onload = function(ev) {
                     try {
                         const imported = JSON.parse(ev.target.result);
-                        if (!Array.isArray(imported)) {
+                        if (!imported.users || !imported.lots) {
                             showToast('Fichier invalide', 'error');
                             return;
                         }
-                        if (!confirm('Importer les données écrasera toutes les données actuelles. Continuer ?'))
-                            return;
-                        for (const lot of imported) {
-                            await apiFetch('/lots', {
-                                method: 'POST',
-                                body: JSON.stringify(lot)
-                            });
-                        }
+                        if (!confirm('Importer les données écrasera toutes les données actuelles. Continuer ?')) return;
+                        state = imported;
+                        saveState();
                         showToast('Données importées avec succès', 'success');
-                        refreshAll();
+                        location.reload();
                     } catch (err) {
                         showToast('Erreur lors de l\'importation', 'error');
                     }
@@ -4181,18 +4202,13 @@
                 this.value = '';
             });
 
-            document.getElementById('resetDataBtn').addEventListener('click', async () => {
+            document.getElementById('resetDataBtn').addEventListener('click', () => {
                 if (!confirm('Réinitialiser toutes les données ? Cette action est irréversible.')) return;
                 if (!confirm('Confirmer la réinitialisation ?')) return;
-                try {
-                    const lots = await apiFetch('/lots');
-                    for (const lot of lots) {
-                        await apiFetch(`/lots/${lot.id}`, { method: 'DELETE' });
-                    }
-                    state.lots = [];
-                    showToast('Données réinitialisées', 'warning');
-                    refreshAll();
-                } catch (e) { showToast('Erreur', 'error'); }
+                state = getDefaultState();
+                saveState();
+                showToast('Données réinitialisées', 'warning');
+                location.reload();
             });
         }
 
@@ -4269,52 +4285,53 @@
         // ============================================================
         // INIT
         // ============================================================
-        async function init() {
+        function init() {
+            if (!loadState()) {
+                state = getDefaultState();
+                saveState();
+            }
             setupAuth();
-
-            // Vérifier si un token existe
-            const token = localStorage.getItem('token');
-            if (token) {
-                try {
-                    // Vérifier si le token est valide en récupérant l'utilisateur
-                    const user = await apiFetch('/auth/me');
-                    state.currentUserId = user.id;
-                    state.users = [user];
+            if (state.currentUserId) {
+                const user = getCurrentUser();
+                if (user) {
                     enterApp();
-                    return;
-                } catch (e) {
-                    localStorage.removeItem('token');
+                } else {
+                    state.currentUserId = null;
+                    saveState();
                 }
             }
+            setupNavigation();
+            setupModalNav();
 
-            // Sinon, afficher l'écran de connexion
-            document.getElementById('authScreen').style.display = 'flex';
-        }
+            // Patch renderSubPage
+            const origRenderSub = renderSubPage;
+            renderSubPage = function(sub) {
+                origRenderSub(sub);
+                if (sub === 'temperature') {
+                    const d = document.getElementById('tempDate');
+                    if (d && !d.value) d.value = new Date().toISOString().slice(0, 10);
+                    bindTemperatureEvents();
+                }
+                if (sub === 'guide') bindGuideEvents();
+                if (sub === 'clients') bindClientEvents();
+                if (sub === 'costs') bindCostsEvents();
+            };
 
-        // Patch pour renderSubPage
-        const origRenderSub = renderSubPage;
-        renderSubPage = function(sub) {
-            origRenderSub(sub);
-            if (sub === 'temperature') {
-                const d = document.getElementById('tempDate');
-                if (d && !d.value) d.value = new Date().toISOString().slice(0, 10);
-                bindTemperatureEvents();
+            const origNavSub = navigateToSub;
+            navigateToSub = function(sub) {
+                currentSubPage = sub;
+                document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+                document.getElementById('subPageContainer').style.display = 'block';
+                renderSubPage(sub);
+            };
+
+            if (state.currentUserId) {
+                const user = getCurrentUser();
+                if (user) enterApp();
             }
-            if (sub === 'guide') bindGuideEvents();
-            if (sub === 'clients') bindClientEvents();
-            if (sub === 'costs') bindCostsEvents();
-        };
-
-        const origNavSub = navigateToSub;
-        navigateToSub = function(sub) {
-            currentSubPage = sub;
-            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-            document.getElementById('subPageContainer').style.display = 'block';
-            renderSubPage(sub);
-        };
+        }
 
         document.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
 </html>
-Ajout du site complet
