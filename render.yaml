@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: tico-farm-frontend
+    env: static
+    plan: free
+    staticPublishPath: .
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: no-cache
+        Ajout de render.yaml
