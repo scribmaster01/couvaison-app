@@ -620,7 +620,59 @@ pool.connect()
         await initDatabase();
     })
     .catch(err => console.error('❌ Erreur de connexion PostgreSQL:', err));
-
+// ============================================================
+// ROUTE DE TEST - Création d'un utilisateur (À SUPPRIMER APRÈS)
+// ============================================================
+app.get('/api/create-test-user', async (req, res) => {
+    try {
+        const bcrypt = require('bcrypt');
+        const { Pool } = require('pg');
+        
+        // Connexion à la base
+        const pool = new Pool({
+            connectionString: process.env.DATABASE_URL,
+            ssl: { rejectUnauthorized: false }
+        });
+        
+        const firstName = 'Jean';
+        const farmName = 'Ferme Egbame';
+        const address = 'Adetikopé';
+        const password = 'test1234';  // ← Changez ce mot de passe
+        const species = 'poule';
+        
+        // Vérifier si l'utilisateur existe déjà
+        const existing = await pool.query('SELECT id FROM users WHERE first_name = $1', [firstName]);
+        if (existing.rows.length > 0) {
+            return res.json({ 
+                success: false, 
+                message: '❌ L\'utilisateur existe déjà. Essayez de vous connecter directement.' 
+            });
+        }
+        
+        // Hasher le mot de passe
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+        
+        // Insérer l'utilisateur
+        await pool.query(
+            `INSERT INTO users (id, first_name, farm_name, address, password_hash, species)
+             VALUES ($1, $2, $3, $4, $5, $6)`,
+            [id, firstName, farmName, address, hashedPassword, species]
+        );
+        
+        res.json({
+            success: true,
+            message: '✅ Utilisateur créé avec succès !',
+            user: { id, firstName, farmName, address, species }
+        });
+    } catch (err) {
+        console.error('Erreur création test:', err);
+        res.status(500).json({ 
+            success: false, 
+            error: err.message 
+        });
+    }
+});
 app.listen(PORT, () => {
   console.log(`🚀 Serveur Tico Farm démarré sur le port ${PORT}`);
   console.log(`📊 Base de données: ${process.env.DATABASE_URL ? '✅ Configurée' : '❌ Non configurée'}`);
