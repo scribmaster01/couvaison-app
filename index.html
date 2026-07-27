@@ -2722,9 +2722,23 @@
 ---------------------------------------------------------------- */
 const SUPABASE_URL = 'https://wclntlgzhrcjddnxubzy.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_vXHr6Kvc2bNm5fUXvGdUIg_mGNoccvY';
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let supabase = null;
+let supabaseInitError = null;
+try {
+  if (!window.supabase) throw new Error("La bibliothèque Supabase ne s'est pas chargée (pas de connexion internet ?)");
+  supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+} catch (e) {
+  supabaseInitError = e;
+  console.error('Initialisation Supabase impossible :', e);
+}
 function needSupabaseWarning() {
-  return !SUPABASE_URL || SUPABASE_URL.includes('xxxxxxxxxxxx') || !SUPABASE_ANON_KEY || SUPABASE_ANON_KEY.startsWith('COLLE_ICI');
+  return !supabase || !SUPABASE_URL || SUPABASE_URL.includes('xxxxxxxxxxxx') || !SUPABASE_ANON_KEY || SUPABASE_ANON_KEY.startsWith('COLLE_ICI');
+}
+function showOfflineBanner(message) {
+  const el = document.createElement('div');
+  el.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#a51e1e;color:#fff;text-align:center;padding:10px 14px;font-size:13px;z-index:9999;';
+  el.textContent = message;
+  document.body.prepend(el);
 }
 
 /* Tranches d'âge de vente (poussins de couvoir ET cheptel d'engraissement) */
@@ -3330,6 +3344,7 @@ function setRegisterType(type, el) {
 
 async function handleRegister(e) {
   e.preventDefault();
+  if (!supabase) return toast('Connexion au serveur impossible — vérifiez votre connexion internet.', 'error');
   const f = e.target;
   const submitBtn = f.querySelector('button[type="submit"]');
   const firstName = f.firstName.value.trim();
@@ -3359,6 +3374,7 @@ async function handleRegister(e) {
 
 async function handleLogin(e) {
   e.preventDefault();
+  if (!supabase) return toast('Connexion au serveur impossible — vérifiez votre connexion internet.', 'error');
   const f = e.target;
   const submitBtn = f.querySelector('button[type="submit"]');
   const phone = f.phone.value.trim();
@@ -6445,14 +6461,24 @@ document.addEventListener('click', (e) => {
 ================================================================ */
 window.addEventListener('DOMContentLoaded', async () => {
   applyStoredTheme();
-  if (needSupabaseWarning()) {
-    toast('⚠️ Configuration Supabase manquante — voir SUPABASE_URL / SUPABASE_ANON_KEY dans le code', 'error');
-  }
   $('#authScreen').style.display = 'flex';
   $('#app').style.display = 'none';
-  // Session déjà active (utilisateur déjà connecté précédemment) ?
-  const { data: { session } } = await supabase.auth.getSession();
-  if (session) { await bootstrapSession(); }
+
+  if (!supabase) {
+    showOfflineBanner('⚠️ Connexion au serveur impossible. Vérifiez votre connexion internet et rechargez la page.');
+  } else {
+    if (needSupabaseWarning()) {
+      toast('⚠️ Configuration Supabase manquante — voir SUPABASE_URL / SUPABASE_ANON_KEY dans le code', 'error');
+    }
+    try {
+      // Session déjà active (utilisateur déjà connecté précédemment) ?
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) { await bootstrapSession(); }
+    } catch (e) {
+      console.error('Erreur de connexion au serveur :', e);
+      showOfflineBanner('⚠️ Connexion au serveur impossible. Vérifiez votre connexion internet et rechargez la page.');
+    }
+  }
 
   $$('.modal-overlay').forEach(o => {
     o.addEventListener('click', (e) => {
